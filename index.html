@@ -23,29 +23,46 @@
 
         <!-- UI -->
         <aside class="panel">
-          <h2 class="panel__title">Сборка</h2>
+          <h2 class="panel__title">Корт</h2>
 
           <div class="card">
             <label class="radio">
-              <input type="radio" name="court" value="ppa" checked />
-              <span>PPA</span>
+              <input type="radio" name="court" value="base" checked />
+              <span>Base</span>
             </label>
+
             <label class="radio">
-              <input type="radio" name="court" value="ppa-ultra" />
-              <span>PPA Ultra</span>
+              <input type="radio" name="court" value="base_panoramic" />
+              <span>Base Panoramic</span>
             </label>
+
             <label class="radio">
-              <input type="radio" name="court" value="mundial" />
-              <span>Mundial</span>
+              <input type="radio" name="court" value="ultrapanoramic" />
+              <span>Ultra Panoramic</span>
             </label>
 
             <div class="note">
-              Модели должны лежать в <b>public/models</b> и открываться по URL вида
-              <code>/models/...</code>
+              Модели корта лежат в <b>public/models/courts</b> и открываются по URL
+              <code>/models/courts/...</code>
             </div>
           </div>
 
-          <h2 class="panel__title">Освещение</h2>
+          <h2 class="panel__title">Освещение как модель</h2>
+          <div class="card">
+            <div class="row">
+              <select id="lightsModel" class="select">
+                <option value="none" selected>Без освещения</option>
+                <option value="top">Lights Top</option>
+                <option value="posts4">Lights 4 Posts</option>
+                <option value="variant4">4 Variant</option>
+              </select>
+            </div>
+            <div class="note">
+              Это отдельная GLB-модель, которая добавляется поверх корта (папка <b>public/models/lights</b>).
+            </div>
+          </div>
+
+          <h2 class="panel__title">Освещение сцены</h2>
           <div class="card">
             <div class="row">
               <select id="lighting" class="select">
@@ -55,12 +72,14 @@
                 <option value="night">Night</option>
               </select>
             </div>
-            <div class="note">Это пресеты света (интенсивность/цвет/направление).</div>
+            <div class="note">Это пресеты света рендера (интенсивность/цвет/направление).</div>
           </div>
 
           <h2 class="panel__title">Цвета</h2>
           <div class="card">
-            <div class="subttl">Быстро: структура (часто это Black / Black_plastic / Black_grid)</div>
+            <div class="subttl">
+              Быстро: структура (часто это Black / Black_plastic / Black_grid)
+            </div>
             <div class="btnrow">
               <button class="btn" data-struct="#111111">Чёрный</button>
               <button class="btn" data-struct="#2c2c2c">Графит</button>
@@ -70,10 +89,10 @@
 
             <hr class="sep" />
 
-            <div class="subttl">Любой материал из модели</div>
+            <div class="subttl">Любой материал из корта</div>
             <div class="row">
               <select id="materialTarget" class="select">
-                <option value="">(сначала загрузится модель)</option>
+                <option value="">(сначала загрузится корт)</option>
               </select>
             </div>
 
@@ -85,7 +104,7 @@
             </div>
 
             <div class="note">
-              Если “цвет корта” не меняется — выбери другой материал в списке.
+              Если “цвет” не меняется — выбери другой материал в списке.
               Названия материалов видно в списке и в консоли.
             </div>
           </div>
