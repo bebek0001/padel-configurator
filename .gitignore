@@ -2,6 +2,15 @@ node_modules/
 dist/
 build/
 .env
+.DS_Store
+.vscode/
+__pycache__/
+*.swp
+*.swo
+node_modules/
+dist/
+build/
+.env
 .vscode/
 __pycache__/
 .DS_Store
