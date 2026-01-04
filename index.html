@@ -5,121 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Padel Configurator</title>
   </head>
-  <body>
-    <div id="app">
-      <div class="layout">
-        <!-- 3D -->
-        <div class="viewer">
-          <canvas id="canvas"></canvas>
 
-          <div class="hud">
-            <div class="hud__title">3D просмотр</div>
-            <div class="hud__hint">
-              ЛКМ — вращение, ПКМ — сдвиг, колесо — зум
-            </div>
-            <div id="status" class="hud__status"></div>
-          </div>
+  <body>
+    <div class="app">
+      <!-- LEFT: 3D -->
+      <main class="viewer">
+        <canvas id="canvas"></canvas>
+
+        <div class="viewerHud">
+          <div class="viewerHud__title">3D просмотр</div>
+          <div class="viewerHud__hint">ЛКМ — вращение, ПКМ — сдвиг, колесо — зум</div>
+          <div id="status" class="viewerHud__status"></div>
+        </div>
+      </main>
+
+      <!-- RIGHT: CONFIG PANEL -->
+      <aside class="panel">
+        <div class="panelTop">
+          <div class="price" id="price">€0.00</div>
         </div>
 
-        <!-- UI -->
-        <aside class="panel">
-          <h2 class="panel__title">Корт</h2>
+        <div class="steps">
+          <!-- STEP 1 -->
+          <section class="step is-open" data-step="1">
+            <header class="stepHead">
+              <div class="stepNum">1</div>
+              <div class="stepTitle">Courts</div>
+            </header>
 
-          <div class="card">
-            <label class="radio">
-              <input type="radio" name="court" value="base" checked />
-              <span>Base</span>
-            </label>
+            <div class="stepBody">
+              <div class="groupTitle">Court options</div>
 
-            <label class="radio">
-              <input type="radio" name="court" value="base_panoramic" />
-              <span>Base Panoramic</span>
-            </label>
+              <div class="optionList">
+                <label class="optionRow">
+                  <input type="radio" name="court" value="base" checked />
+                  <span class="optionLabel">Base</span>
+                  <span class="optionMark" aria-hidden="true">✓</span>
+                </label>
 
-            <label class="radio">
-              <input type="radio" name="court" value="ultrapanoramic" />
-              <span>Ultra Panoramic</span>
-            </label>
+                <label class="optionRow">
+                  <input type="radio" name="court" value="base_panoramic" />
+                  <span class="optionLabel">Base Panoramic</span>
+                  <span class="optionMark" aria-hidden="true">✓</span>
+                </label>
 
-            <div class="note">
-              Модели корта лежат в <b>public/models/courts</b> и открываются по URL
-              <code>/models/courts/...</code>
+                <label class="optionRow">
+                  <input type="radio" name="court" value="ultrapanoramic" />
+                  <span class="optionLabel">Ultra Panoramic</span>
+                  <span class="optionMark" aria-hidden="true">✓</span>
+                </label>
+              </div>
+
+              <button class="nextBtn" data-next="2">
+                Next step <span class="chev">▾</span>
+              </button>
+
+              <div class="panelNote">
+                Модели лежат в <b>public/models/courts</b> и открываются по URL <code>/models/courts/...</code>
+              </div>
+
+              <div class="btnRow">
+                <button class="ghostBtn" id="reframe">Центрировать вид</button>
+              </div>
             </div>
+          </section>
 
-            <div class="btnrow btnrow--single">
-              <button class="btn" id="reframe">Центрировать вид</button>
+          <!-- STEP 2 -->
+          <section class="step" data-step="2">
+            <header class="stepHead">
+              <div class="stepNum">2</div>
+              <div class="stepTitle">Structure Color</div>
+            </header>
+
+            <div class="stepBody">
+              <div class="groupTitle">Colors</div>
+
+              <div class="colorGrid">
+                <button class="colorChip" data-struct="#1f6fff">
+                  <span class="dot" style="background:#1f6fff"></span> Blue
+                </button>
+                <button class="colorChip" data-struct="#111111">
+                  <span class="dot" style="background:#111111"></span> Black
+                </button>
+                <button class="colorChip" data-struct="#00a86b">
+                  <span class="dot" style="background:#00a86b"></span> Green
+                </button>
+                <button class="colorChip" data-struct="#ff2a2a">
+                  <span class="dot" style="background:#ff2a2a"></span> Red
+                </button>
+                <button class="colorChip" data-struct="#ff4bd2">
+                  <span class="dot" style="background:#ff4bd2"></span> Pink
+                </button>
+                <button class="colorChip" data-struct="#ffd400">
+                  <span class="dot" style="background:#ffd400"></span> Yellow
+                </button>
+                <button class="colorChip" data-struct="#ff7a00">
+                  <span class="dot" style="background:#ff7a00"></span> Orange
+                </button>
+                <button class="colorChip" data-struct="#8a2be2">
+                  <span class="dot" style="background:#8a2be2"></span> Purple
+                </button>
+              </div>
+
+              <div class="inlineControls">
+                <label class="inlineLabel">Custom</label>
+                <input type="color" id="structureColor" class="colorInput" value="#111111" />
+                <button class="pillBtn" id="applyStructureColor">Apply</button>
+                <button class="pillBtn pillBtn--ghost" id="resetStructureColors">Reset</button>
+              </div>
+
+              <button class="nextBtn" data-next="3">
+                Next step <span class="chev">▾</span>
+              </button>
+
+              <div class="panelNote">
+                Красится только материал <b>Black</b>. Материалы типа <b>Black.001</b> не трогаются.
+              </div>
             </div>
-          </div>
+          </section>
 
-          <h2 class="panel__title">Освещение как модель</h2>
-          <div class="card">
-            <div class="row">
+          <!-- STEP 3 -->
+          <section class="step" data-step="3">
+            <header class="stepHead">
+              <div class="stepNum">3</div>
+              <div class="stepTitle">Lighting</div>
+            </header>
+
+            <div class="stepBody">
+              <div class="groupTitle">Lighting as model</div>
+
               <select id="lightsModel" class="select">
-                <option value="none" selected>Без освещения</option>
+                <option value="none" selected>Without lighting</option>
                 <option value="top">Lights Top</option>
                 <option value="posts4">Lights 4 Posts</option>
                 <option value="variant4">4 Variant</option>
               </select>
-            </div>
-            <div class="note">
-              Это отдельная GLB-модель, которая добавляется поверх корта
-              (<b>public/models/lights</b>).
-            </div>
-          </div>
 
-          <h2 class="panel__title">Освещение сцены</h2>
-          <div class="card">
-            <div class="row">
+              <div class="groupTitle" style="margin-top:14px;">Scene lighting</div>
               <select id="lighting" class="select">
                 <option value="studio" selected>Studio</option>
                 <option value="sunny">Sunny</option>
                 <option value="arena">Arena</option>
                 <option value="night">Night</option>
               </select>
-            </div>
-            <div class="note">
-              Пресеты света рендера (интенсивность / цвет / направление).
-            </div>
-          </div>
 
-          <h2 class="panel__title">Цвета</h2>
-          <div class="card">
-            <div class="subttl">Структура</div>
-
-            <!-- 8 допустимых цветов -->
-            <div class="btnrow">
-              <button class="btn" data-struct="#1f6fff">Синий</button>
-              <button class="btn" data-struct="#111111">Чёрный</button>
-              <button class="btn" data-struct="#00a86b">Зелёный</button>
-              <button class="btn" data-struct="#e53935">Красный</button>
-
-              <button class="btn" data-struct="#ff4fb8">Розовый</button>
-              <button class="btn" data-struct="#ffd400">Жёлтый</button>
-              <button class="btn" data-struct="#ff7a00">Оранжевый</button>
-              <button class="btn" data-struct="#7c3aed">Фиолетовый</button>
-            </div>
-
-            <div class="row row--stack">
-              <label class="label">Свой цвет структуры</label>
-              <div class="row">
-                <input
-                  type="color"
-                  id="structureColor"
-                  class="color-input"
-                  value="#111111"
-                />
-                <button class="btn" id="applyStructureColor">Применить</button>
-                <button
-                  class="btn btn--ghost"
-                  id="resetStructureColors"
-                >
-                  Сбросить
-                </button>
+              <div class="panelNote">
+                “Lighting as model” — это GLB слой из <b>public/models/lights</b>. “Scene lighting” — свет рендера.
               </div>
             </div>
-          </div>
-        </aside>
-      </div>
+          </section>
+        </div>
+      </aside>
     </div>
 
     <script type="module" src="/src/main.js"></script>
