@@ -121,6 +121,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text);
   margin-top: 10px;
 }
 
+.btnrow--single {
+  grid-template-columns: 1fr;
+}
+
 .btn {
   padding: 10px 10px;
   border-radius: 12px;
@@ -134,6 +138,10 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text);
   transform: translateY(1px);
 }
 
+.btn--ghost {
+  background: transparent;
+}
+
 .sep {
   border: none;
   border-top: 1px solid var(--border);
@@ -144,4 +152,26 @@ html, body { height: 100%; margin: 0; background: var(--bg); color: var(--text);
   font-size: 12px;
   color: var(--muted);
   font-weight: 600;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.color-input {
+  width: 48px;
+  height: 40px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.row--stack {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 12px;
 }
