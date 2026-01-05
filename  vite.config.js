@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  // относительные пути — работает на GitHub Pages и в iframe на Tilda
+  // Важно для GitHub Pages + iframe (Tilda): относительные пути к ассетам
   base: './'
 })
