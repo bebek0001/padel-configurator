@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/padel-configurator/'
+  // относительные пути — работает на GitHub Pages и в iframe на Tilda
+  base: './'
 })
