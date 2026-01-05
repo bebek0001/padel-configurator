@@ -4,429 +4,470 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-// Base-aware URL builder (works in dev and on GitHub Pages project paths)
-const assetUrl = (p) => new URL(p, import.meta.env.BASE_URL).toString();
+// -----------------------------
+// BASE URL helper (GitHub Pages fix)
+// -----------------------------
+// На локалке BASE_URL = "/"
+// На GitHub Pages BASE_URL = "/padel-configurator/"
+const BASE_URL = import.meta.env.BASE_URL || '/'
+const assetUrl = (p) => `${BASE_URL}${String(p).replace(/^\/+/, '')}`
 
-// ---------------------------
-// DOM
-// ---------------------------
-const app = document.querySelector('#app')
-
-app.innerHTML = `
-  <div class="layout">
-    <div class="viewer">
-      <canvas id="c"></canvas>
-
-      <div class="hint">
-        <div class="hint__title">3D просмотр</div>
-        <div class="hint__text">ЛКМ — вращение, ПКМ — сдвиг, колесо — зум</div>
-        <div class="hint__status" id="status">Загрузка…</div>
-      </div>
-    </div>
-
-    <aside class="sidebar">
-      <div class="steps">
-        <div class="step">
-          <div class="step__head">
-            <div class="step__num">1</div>
-            <div class="step__title">Courts</div>
-          </div>
-
-          <div class="card">
-            <div class="card__title">Court options</div>
-
-            <label class="radio">
-              <input type="radio" name="court" value="base" checked />
-              <span>Base</span>
-            </label>
-
-            <label class="radio">
-              <input type="radio" name="court" value="base_panoramic" />
-              <span>Base Panoramic</span>
-            </label>
-
-            <label class="radio">
-              <input type="radio" name="court" value="ultra_panoramic" />
-              <span>Ultra Panoramic</span>
-            </label>
-
-            <button class="btn" id="btnCenter">Центрировать вид</button>
-
-            <div class="muted">
-              Модели: <b>public/models/courts</b> → <span class="mono">${import.meta.env.BASE_URL}models/courts/…</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="step__head">
-            <div class="step__num">2</div>
-            <div class="step__title">Structure Color</div>
-          </div>
-
-          <div class="card">
-            <div class="card__title">Colors</div>
-
-            <div class="grid">
-              <button class="pill" data-color="#1e63ff">Blue</button>
-              <button class="pill" data-color="#111111">Black</button>
-              <button class="pill" data-color="#20c45a">Green</button>
-              <button class="pill" data-color="#ff2d2d">Red</button>
-              <button class="pill" data-color="#ff4fd0">Pink</button>
-              <button class="pill" data-color="#ffd400">Yellow</button>
-              <button class="pill" data-color="#ff7a00">Orange</button>
-              <button class="pill" data-color="#8b3dff">Purple</button>
-            </div>
-
-            <div class="row">
-              <div class="row__label">Custom</div>
-              <input type="color" id="customColor" value="#111111" />
-              <button class="btn btn--small" id="btnApplyCustom">Apply</button>
-              <button class="btn btn--small btn--ghost" id="btnReset">Reset</button>
-            </div>
-
-            <div class="muted">
-              Красится только материал <b>Black</b>. Материалы типа <b>Black.001</b> не трогаются.
-            </div>
-
-            <button class="btn btn--wide btn--ghost" id="btnResetAll">Вернуть исходные цвета</button>
-          </div>
-        </div>
-
-        <div class="step">
-          <div class="step__head">
-            <div class="step__num">3</div>
-            <div class="step__title">Lighting</div>
-          </div>
-
-          <div class="card">
-            <div class="card__title">Lighting as model</div>
-            <select id="selLightModel" class="select">
-              <option value="none">Без освещения</option>
-              <option value="top" selected>Lights Top</option>
-              <option value="4posts">Lights 4 Posts</option>
-            </select>
-
-            <div class="card__title card__title--mt">Scene lighting</div>
-            <select id="selScenePreset" class="select">
-              <option value="studio" selected>Studio</option>
-              <option value="soft">Soft</option>
-              <option value="hard">Hard</option>
-            </select>
-
-            <div class="muted">
-              “Lighting as model” — GLB слой из <b>public/models/lights</b>.<br/>
-              “Scene lighting” — свет рендера.
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </aside>
-  </div>
-`
-
-const elStatus = document.querySelector('#status')
-
-// ---------------------------
-// THREE базовая сцена
-// ---------------------------
-const canvas = document.querySelector('#c')
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
-renderer.outputColorSpace = THREE.SRGBColorSpace
-
-const scene = new THREE.Scene()
-scene.background = null
-
-const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000)
-camera.position.set(8, 6, 10)
-
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
-controls.target.set(0, 1.2, 0)
-controls.update()
-
-// “рендерный” свет (presets)
-const hemi = new THREE.HemisphereLight(0xffffff, 0x111111, 0.6)
-scene.add(hemi)
-
-const dir = new THREE.DirectionalLight(0xffffff, 1.0)
-dir.position.set(6, 10, 6)
-dir.castShadow = false
-scene.add(dir)
-
-function applyScenePreset(preset) {
-  if (preset === 'studio') {
-    hemi.intensity = 0.65
-    dir.intensity = 1.05
-    dir.position.set(6, 10, 6)
-  } else if (preset === 'soft') {
-    hemi.intensity = 0.85
-    dir.intensity = 0.7
-    dir.position.set(4, 7, 3)
-  } else if (preset === 'hard') {
-    hemi.intensity = 0.4
-    dir.intensity = 1.4
-    dir.position.set(10, 14, 2)
-  }
+// -----------------------------
+// SETTINGS
+// -----------------------------
+const LIGHTS_Y_LIFT_DEFAULT = 2.2
+const LIGHTS_Y_LIFT_BY_KEY = {
+  top: 7.5,
+  posts4: 2.2,
+  variant4: 2.2
 }
 
-// ---------------------------
-// Модели: корт + свет как модель
-// ---------------------------
-const loader = new GLTFLoader()
-
-const courtRoot = new THREE.Group()
-const lightsRoot = new THREE.Group()
-scene.add(courtRoot)
-scene.add(lightsRoot)
-
-let currentCourt = null
-let currentLights = null
-
-const courtVariants = {
+// ВАЖНО: имена файлов должны совпадать с public/models/courts
+// У тебя сейчас: base.glb, base_panoramic.glb, ultra_panoramic.glb
+const COURT_MODEL_URLS = {
   base: assetUrl('models/courts/base.glb'),
   base_panoramic: assetUrl('models/courts/base_panoramic.glb'),
-  ultra_panoramic: assetUrl('models/courts/ultra_panoramic.glb'),
+  ultra_panoramic: assetUrl('models/courts/ultra_panoramic.glb')
 }
 
-const lightModels = {
-  none: null,
-  top: assetUrl('models/lights/lights-top.glb'),
-  '4posts': assetUrl('models/lights/lights-4posts.glb'),
+// lights — оставляем как у тебя в папке
+const LIGHTS_MODEL_URLS = {
+  none: [assetUrl('models/lights/none.glb')],
+
+  top: [
+    assetUrl('models/lights/lights-top.glb'),
+    assetUrl('models/lights/top.glb'),
+    assetUrl('models/lights/lights_top.glb'),
+    assetUrl('models/lights/LightsTop.glb')
+  ],
+
+  posts4: [
+    assetUrl('models/lights/lights-4posts.glb'),
+    assetUrl('models/lights/4posts.glb'),
+    assetUrl('models/lights/lights_4posts.glb'),
+    assetUrl('models/lights/Lights4Posts.glb')
+  ],
+
+  variant4: [
+    assetUrl('models/lights/4-variant.glb'),
+    assetUrl('models/lights/variant4.glb'),
+    assetUrl('models/lights/4variant.glb'),
+    assetUrl('models/lights/Variant4.glb')
+  ]
 }
 
-let originalBlackColor = null
+// красим строго только этот материал
+const PAINTABLE_STRUCTURE_MATERIAL_NAME = 'Black'
 
-function setStatus(t) {
-  elStatus.textContent = t
+// -----------------------------
+// DOM
+// -----------------------------
+const canvas = document.querySelector('#canvas')
+const statusEl = document.querySelector('#status')
+const lightingSelect = document.querySelector('#lighting')
+const lightsModelSelect = document.querySelector('#lightsModel')
+const reframeBtn = document.querySelector('#reframe')
+
+const structureColorInput = document.querySelector('#structureColor')
+const applyStructureColorBtn = document.querySelector('#applyStructureColor')
+const resetStructureColorsBtn = document.querySelector('#resetStructureColors')
+const restoreAllColorsBtn = document.querySelector('#restoreAllColors')
+
+const courtBaseHint = document.querySelector('#courtBaseHint')
+
+// UI steps
+document.querySelectorAll('.stepHead').forEach((head) => {
+  head.addEventListener('click', () => {
+    const step = head.closest('.step')
+    if (!step) return
+    step.classList.toggle('is-open')
+  })
+})
+
+document.querySelectorAll('[data-next]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const next = btn.getAttribute('data-next')
+    const target = document.querySelector(`.step[data-step="${next}"]`)
+    if (!target) return
+
+    document.querySelectorAll('.step').forEach((s) => s.classList.remove('is-open'))
+    target.classList.add('is-open')
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
+})
+
+// Радио корта
+const courtRadios = document.querySelectorAll('input[name="court"]')
+
+// -----------------------------
+// THREE
+// -----------------------------
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+renderer.outputColorSpace = THREE.SRGBColorSpace
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1.0
+
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0x070a0f)
+
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500)
+camera.position.set(6, 4, 10)
+
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+controls.dampingFactor = 0.06
+controls.target.set(0, 1.2, 0)
+
+const loader = new GLTFLoader()
+const clock = new THREE.Clock()
+
+const world = new THREE.Group()
+scene.add(world)
+
+let courtRoot = null
+let lightsRoot = null
+let currentLightsKey = 'none'
+
+let mixerCourt = null
+let mixerLights = null
+
+const originalMaterialColors = new Map()
+
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text || ''
 }
 
-function clearGroup(g) {
-  while (g.children.length) {
-    const obj = g.children.pop()
-    obj.traverse?.((n) => {
-      if (n.geometry) n.geometry.dispose?.()
-      if (n.material) {
-        if (Array.isArray(n.material)) n.material.forEach((m) => m.dispose?.())
-        else n.material.dispose?.()
-      }
+// grid
+const grid = new THREE.GridHelper(40, 40, 0x223044, 0x141c28)
+grid.position.y = 0
+grid.material.opacity = 0.35
+grid.material.transparent = true
+scene.add(grid)
+
+function resize() {
+  const w = canvas.clientWidth
+  const h = canvas.clientHeight
+  renderer.setSize(w, h, false)
+  camera.aspect = w / h
+  camera.updateProjectionMatrix()
+}
+window.addEventListener('resize', resize)
+resize()
+
+function forgetMaterialColors(root) {
+  if (!root) return
+  root.traverse((obj) => {
+    if (!obj.isMesh) return
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+    mats.forEach((m) => {
+      if (!m) return
+      originalMaterialColors.delete(m.uuid)
     })
+  })
+}
+
+function disposeRoot(root) {
+  if (!root) return
+  root.traverse((obj) => {
+    if (!obj.isMesh) return
+    obj.geometry?.dispose?.()
+    if (Array.isArray(obj.material)) obj.material.forEach((m) => m?.dispose?.())
+    else obj.material?.dispose?.()
+  })
+}
+
+function clearCourt() {
+  if (!courtRoot) return
+  forgetMaterialColors(courtRoot)
+  world.remove(courtRoot)
+  disposeRoot(courtRoot)
+  courtRoot = null
+  mixerCourt = null
+}
+
+function clearLightsModel() {
+  if (!lightsRoot) return
+  forgetMaterialColors(lightsRoot)
+  world.remove(lightsRoot)
+  disposeRoot(lightsRoot)
+  lightsRoot = null
+  mixerLights = null
+}
+
+function improveMaterials(root) {
+  if (!root) return
+  root.traverse((obj) => {
+    if (!obj.isMesh) return
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+    mats.forEach((m) => {
+      if (!m) return
+
+      if (!originalMaterialColors.has(m.uuid) && m.color) {
+        originalMaterialColors.set(m.uuid, m.color.clone())
+      }
+
+      if ('metalness' in m) m.metalness = Math.min(m.metalness ?? 0, 1)
+      if ('roughness' in m) m.roughness = m.roughness ?? 0.8
+      m.needsUpdate = true
+    })
+  })
+}
+
+function restoreOriginalColors() {
+  const restore = (root) => {
+    if (!root) return
+    root.traverse((obj) => {
+      if (!obj.isMesh) return
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+      mats.forEach((m) => {
+        if (!m || !m.color) return
+        const orig = originalMaterialColors.get(m.uuid)
+        if (orig) {
+          m.color.copy(orig)
+          m.needsUpdate = true
+        }
+      })
+    })
+  }
+  restore(courtRoot)
+  restore(lightsRoot)
+}
+
+function setSceneLightingPreset(preset) {
+  // удаляем старый свет
+  const toRemove = []
+  scene.traverse((o) => {
+    if (o.isLight && o.userData?.isPresetLight) toRemove.push(o)
+  })
+  toRemove.forEach((l) => scene.remove(l))
+
+  const add = (light) => {
+    light.userData.isPresetLight = true
+    scene.add(light)
+  }
+
+  if (preset === 'soft') {
+    const a = new THREE.AmbientLight(0xffffff, 0.65)
+    add(a)
+    const d = new THREE.DirectionalLight(0xffffff, 0.9)
+    d.position.set(6, 10, 6)
+    add(d)
+  } else if (preset === 'contrast') {
+    const a = new THREE.AmbientLight(0xffffff, 0.35)
+    add(a)
+    const d1 = new THREE.DirectionalLight(0xffffff, 1.25)
+    d1.position.set(8, 12, 4)
+    add(d1)
+    const d2 = new THREE.DirectionalLight(0xffffff, 0.55)
+    d2.position.set(-6, 6, -8)
+    add(d2)
+  } else {
+    // studio
+    const a = new THREE.AmbientLight(0xffffff, 0.45)
+    add(a)
+    const d = new THREE.DirectionalLight(0xffffff, 1.1)
+    d.position.set(7, 10, 5)
+    add(d)
   }
 }
 
-function findMaterialByExactName(root, nameExact) {
-  let found = null
-  root.traverse((n) => {
-    if (found) return
-    if (n.isMesh && n.material) {
-      const mats = Array.isArray(n.material) ? n.material : [n.material]
-      for (const m of mats) {
-        if (m?.name === nameExact) {
-          found = m
-          break
-        }
-      }
-    }
-  })
-  return found
+function fitCameraToObject(obj, offset = 1.35) {
+  if (!obj) return
+  const box = new THREE.Box3().setFromObject(obj)
+  const size = box.getSize(new THREE.Vector3())
+  const center = box.getCenter(new THREE.Vector3())
+
+  const maxSize = Math.max(size.x, size.y, size.z)
+  const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360))
+  const fitWidthDistance = fitHeightDistance / camera.aspect
+  const distance = offset * Math.max(fitHeightDistance, fitWidthDistance)
+
+  const dir = new THREE.Vector3(1, 0.75, 1).normalize()
+  camera.position.copy(center.clone().add(dir.multiplyScalar(distance)))
+  controls.target.copy(center)
+  controls.update()
 }
 
-function alignLightsToCourt() {
-  if (!currentCourt || !currentLights) return
+function placeLightsOverCourt() {
+  if (!courtRoot || !lightsRoot) return
 
-  const boxCourt = new THREE.Box3().setFromObject(currentCourt)
-  const boxLights = new THREE.Box3().setFromObject(currentLights)
+  // lights должны стоять относительно корта, не относительно мира
+  // Поэтому привязываем позицию к центру корта
+  const courtBox = new THREE.Box3().setFromObject(courtRoot)
+  const courtCenter = courtBox.getCenter(new THREE.Vector3())
 
-  const cCenter = new THREE.Vector3()
-  const lCenter = new THREE.Vector3()
-  boxCourt.getCenter(cCenter)
-  boxLights.getCenter(lCenter)
+  const lightsBox = new THREE.Box3().setFromObject(lightsRoot)
+  const lightsCenter = lightsBox.getCenter(new THREE.Vector3())
 
-  // XZ по центру корта, Y по нижней границе корта
-  currentLights.position.x += (cCenter.x - lCenter.x)
-  currentLights.position.z += (cCenter.z - lCenter.z)
+  const lift = LIGHTS_Y_LIFT_BY_KEY[currentLightsKey] ?? LIGHTS_Y_LIFT_DEFAULT
 
-  const cMinY = boxCourt.min.y
-  const lMinY = boxLights.min.y
-  currentLights.position.y += (cMinY - lMinY)
+  // смещаем так, чтобы центры совпали по XZ, и добавляем высоту по Y
+  const dx = courtCenter.x - lightsCenter.x
+  const dz = courtCenter.z - lightsCenter.z
+  lightsRoot.position.x += dx
+  lightsRoot.position.z += dz
+  lightsRoot.position.y = lift
+}
+
+function loadGLB(url) {
+  return new Promise((resolve, reject) => {
+    loader.load(url, resolve, undefined, reject)
+  })
 }
 
 async function loadCourt(key) {
-  const url = courtVariants[key]
+  const url = COURT_MODEL_URLS[key]
   if (!url) return
 
-  setStatus(`Загрузка корта: ${key}…`)
-  clearGroup(courtRoot)
-  currentCourt = null
+  clearCourt()
+  setStatus('Загрузка...')
 
-  return new Promise((resolve) => {
-    loader.load(
-      url,
-      (gltf) => {
-        currentCourt = gltf.scene
-        courtRoot.add(currentCourt)
+  try {
+    const gltf = await loadGLB(url)
+    courtRoot = gltf.scene
+    improveMaterials(courtRoot)
+    world.add(courtRoot)
 
-        // запоминаем исходный цвет Black один раз (с текущей загруженной моделью)
-        const mBlack = findMaterialByExactName(currentCourt, 'Black')
-        if (mBlack && !originalBlackColor) {
-          originalBlackColor = mBlack.color.clone()
-        }
+    mixerCourt = null
+    if (gltf.animations && gltf.animations.length) {
+      mixerCourt = new THREE.AnimationMixer(courtRoot)
+      gltf.animations.forEach((clip) => mixerCourt.clipAction(clip).play())
+    }
 
-        // если уже есть свет — привязываем к новому корту
-        alignLightsToCourt()
+    // после загрузки корта подгоняем камеру и переставляем свет
+    fitCameraToObject(courtRoot, 1.35)
+    placeLightsOverCourt()
 
-        setStatus(`Ок: корт ${key}`)
-        fitViewToCourt()
-        resolve()
-      },
-      undefined,
-      () => {
-        setStatus(`Ошибка загрузки корта: ${url}`)
-        resolve()
-      }
-    )
-  })
+    setStatus(`Ок: корт ${key}\n${url}`)
+  } catch (e) {
+    console.error(e)
+    setStatus(`Ошибка загрузки корта: ${url}`)
+  }
 }
 
-async function loadLights(key) {
-  clearGroup(lightsRoot)
-  currentLights = null
+async function loadLightsModel(key) {
+  currentLightsKey = key
+  clearLightsModel()
 
-  const url = lightModels[key]
-  if (!url) {
-    setStatus(`Ок: освещение выключено`)
+  const candidates = LIGHTS_MODEL_URLS[key]
+  if (!candidates || !candidates.length) {
+    setStatus(`Нет путей для освещения "${key}"`)
     return
   }
 
-  setStatus(`Загрузка освещения: ${key}…`)
+  setStatus('Загрузка...')
 
-  return new Promise((resolve) => {
-    loader.load(
-      url,
-      (gltf) => {
-        currentLights = gltf.scene
-        lightsRoot.add(currentLights)
+  let lastErr = null
+  for (const url of candidates) {
+    try {
+      const gltf = await loadGLB(url)
+      lightsRoot = gltf.scene
+      improveMaterials(lightsRoot)
+      world.add(lightsRoot)
 
-        // критично: после загрузки света привязать к корту
-        alignLightsToCourt()
-
-        setStatus(`Ок: освещение ${key} (файл: ${url})`)
-        resolve()
-      },
-      undefined,
-      () => {
-        setStatus(`Ошибка: не удалось загрузить освещение "${key}". Проверь public/models/lights`)
-        resolve()
+      mixerLights = null
+      if (gltf.animations && gltf.animations.length) {
+        mixerLights = new THREE.AnimationMixer(lightsRoot)
+        gltf.animations.forEach((clip) => mixerLights.clipAction(clip).play())
       }
-    )
-  })
+
+      // важно: после загрузки света ставим его НАД КОРТОМ
+      placeLightsOverCourt()
+      setStatus(`Ок: освещение ${key}\n${url}`)
+      return
+    } catch (e) {
+      lastErr = e
+    }
+  }
+
+  console.error(lastErr)
+  setStatus(`Ошибка: не удалось загрузить освещение "${key}". Проверь public/models/lights`)
 }
 
-function fitViewToCourt() {
-  if (!currentCourt) return
-
-  const box = new THREE.Box3().setFromObject(currentCourt)
-  const size = new THREE.Vector3()
-  const center = new THREE.Vector3()
-  box.getSize(size)
-  box.getCenter(center)
-
-  const maxDim = Math.max(size.x, size.y, size.z)
-  const fov = (camera.fov * Math.PI) / 180
-  let dist = (maxDim / 2) / Math.tan(fov / 2)
-  dist *= 1.3
-
-  camera.position.set(center.x + dist, center.y + dist * 0.55, center.z + dist)
-  controls.target.copy(center)
-  controls.update()
-
-  // если свет есть — после смены камеры и возможных плавающих трансформов еще раз выровнять
-  alignLightsToCourt()
+function paintStructure(hex) {
+  const applyTo = (root) => {
+    if (!root) return
+    root.traverse((obj) => {
+      if (!obj.isMesh) return
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+      mats.forEach((m) => {
+        if (!m || !m.name || !m.color) return
+        if (m.name === PAINTABLE_STRUCTURE_MATERIAL_NAME) {
+          m.color.set(hex)
+          m.needsUpdate = true
+        }
+      })
+    })
+  }
+  applyTo(courtRoot)
+  applyTo(lightsRoot)
 }
 
-// ---------------------------
-// UI events
-// ---------------------------
-document.querySelectorAll('input[name="court"]').forEach((el) => {
-  el.addEventListener('change', async (e) => {
-    const key = e.target.value
-    await loadCourt(key)
-  })
+// -----------------------------
+// UI wiring
+// -----------------------------
+if (courtBaseHint) {
+  courtBaseHint.textContent = `${BASE_URL}models/courts/…`
+}
+
+lightingSelect?.addEventListener('change', (e) => {
+  setSceneLightingPreset(e.target.value)
 })
 
-document.querySelector('#btnCenter').addEventListener('click', () => {
-  fitViewToCourt()
+lightsModelSelect?.addEventListener('change', (e) => {
+  loadLightsModel(e.target.value)
 })
 
-document.querySelectorAll('.pill').forEach((btn) => {
+reframeBtn?.addEventListener('click', () => {
+  fitCameraToObject(courtRoot, 1.35)
+})
+
+applyStructureColorBtn?.addEventListener('click', () => {
+  paintStructure(structureColorInput.value)
+})
+
+resetStructureColorsBtn?.addEventListener('click', () => {
+  paintStructure('#111111')
+})
+
+restoreAllColorsBtn?.addEventListener('click', () => {
+  restoreOriginalColors()
+})
+
+document.querySelectorAll('.colorBtn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    const hex = btn.getAttribute('data-color')
-    applyStructureColor(hex)
+    const c = btn.getAttribute('data-color')
+    if (c) paintStructure(c)
   })
 })
 
-document.querySelector('#btnApplyCustom').addEventListener('click', () => {
-  const hex = document.querySelector('#customColor').value
-  applyStructureColor(hex)
+courtRadios.forEach((r) => {
+  r.addEventListener('change', () => {
+    if (r.checked) loadCourt(r.value)
+  })
 })
 
-document.querySelector('#btnReset').addEventListener('click', () => {
-  if (!currentCourt || !originalBlackColor) return
-  const mBlack = findMaterialByExactName(currentCourt, 'Black')
-  if (mBlack) mBlack.color.copy(originalBlackColor)
-})
+// -----------------------------
+// Init
+// -----------------------------
+setSceneLightingPreset('studio')
 
-document.querySelector('#btnResetAll').addEventListener('click', () => {
-  if (!currentCourt || !originalBlackColor) return
-  const mBlack = findMaterialByExactName(currentCourt, 'Black')
-  if (mBlack) mBlack.color.copy(originalBlackColor)
-})
+// старт: корт base + без света
+loadCourt('base')
+loadLightsModel('none')
 
-document.querySelector('#selLightModel').addEventListener('change', async (e) => {
-  await loadLights(e.target.value)
-})
-
-document.querySelector('#selScenePreset').addEventListener('change', (e) => {
-  applyScenePreset(e.target.value)
-})
-
-// ---------------------------
-// Color apply (only material named "Black")
-// ---------------------------
-function applyStructureColor(hex) {
-  if (!currentCourt) return
-  const mBlack = findMaterialByExactName(currentCourt, 'Black')
-  if (!mBlack) return
-  mBlack.color.set(hex)
-}
-
-// ---------------------------
-// Resize / render loop
-// ---------------------------
-function resize() {
-  const viewer = document.querySelector('.viewer')
-  const w = viewer.clientWidth
-  const h = viewer.clientHeight
-  camera.aspect = w / h
-  camera.updateProjectionMatrix()
-  renderer.setSize(w, h, false)
-}
-window.addEventListener('resize', resize)
-
+// -----------------------------
+// Render loop
+// -----------------------------
 function tick() {
+  const dt = clock.getDelta()
+  if (mixerCourt) mixerCourt.update(dt)
+  if (mixerLights) mixerLights.update(dt)
+
   controls.update()
   renderer.render(scene, camera)
+
   requestAnimationFrame(tick)
 }
-
-// ---------------------------
-// Boot
-// ---------------------------
-applyScenePreset('studio')
-resize()
 tick()
-
-await loadCourt('base')
-await loadLights('top')

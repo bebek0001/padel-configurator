@@ -5,134 +5,152 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Padel Configurator</title>
   </head>
-
   <body>
     <div id="app">
-      <div class="layout">
-        <!-- 3D -->
-        <div class="viewer">
-          <canvas id="canvas"></canvas>
+      <div class="viewer">
+        <canvas id="canvas"></canvas>
 
-          <div class="hud">
-            <div class="hud__title">3D просмотр</div>
-            <div class="hud__hint">ЛКМ — вращение, ПКМ — сдвиг, колесо — зум</div>
-            <div id="status" class="hud__status"></div>
+        <div class="hud">
+          <div class="hudTitle">3D просмотр</div>
+          <div class="hudText">
+            ЛКМ — вращение, ПКМ — сдвиг, колесо — зум
           </div>
+          <div id="status" class="hudStatus">Загрузка...</div>
         </div>
+      </div>
 
-        <!-- UI -->
-        <aside class="panel">
-          <div class="price">€0.00</div>
+      <aside class="panel">
+        <!-- цену убираем -->
+        <!-- <div class="price">€0.00</div> -->
 
-          <div class="step">
-            <div class="step__head">
-              <div class="step__num">1</div>
-              <div class="step__title">Courts</div>
-            </div>
+        <div class="steps">
 
-            <div class="card">
-              <div class="subttl">Court options</div>
+          <!-- STEP 1 -->
+          <section class="step is-open" data-step="1">
+            <button class="stepHead" type="button">
+              <span class="stepNum">1</span>
+              <span class="stepTitle">Courts</span>
+            </button>
 
-              <label class="radio">
-                <input type="radio" name="court" value="base" checked />
-                <span>Base</span>
-              </label>
+            <div class="stepBody">
+              <div class="card">
+                <div class="cardTitle">Court options</div>
 
-              <label class="radio">
-                <input type="radio" name="court" value="base_panoramic" />
-                <span>Base Panoramic</span>
-              </label>
+                <div class="radioList" id="courtRadios">
+                  <label class="radioRow">
+                    <input type="radio" name="court" value="base" checked />
+                    <span>Base</span>
+                  </label>
 
-              <label class="radio">
-                <input type="radio" name="court" value="ultrapanoramic" />
-                <span>Ultra Panoramic</span>
-              </label>
+                  <label class="radioRow">
+                    <input type="radio" name="court" value="base_panoramic" />
+                    <span>Base Panoramic</span>
+                  </label>
 
-              <div class="btnrow btnrow--single">
-                <button class="btn" id="reframe">Центрировать вид</button>
-              </div>
+                  <label class="radioRow">
+                    <input type="radio" name="court" value="ultra_panoramic" />
+                    <span>Ultra Panoramic</span>
+                  </label>
+                </div>
 
-              <div class="note">
-                Модели: <b>public/models/courts</b> → <code>/models/courts/...</code>
-              </div>
-            </div>
-          </div>
+                <button class="btn btnWide" id="reframe" type="button">
+                  Центрировать вид
+                </button>
 
-          <div class="step">
-            <div class="step__head">
-              <div class="step__num">2</div>
-              <div class="step__title">Structure Color</div>
-            </div>
-
-            <div class="card">
-              <div class="subttl">Colors</div>
-
-              <div class="btnrow">
-                <button class="btn" data-struct="#1f6fff">Blue</button>
-                <button class="btn" data-struct="#111111">Black</button>
-                <button class="btn" data-struct="#00a86b">Green</button>
-                <button class="btn" data-struct="#e53935">Red</button>
-                <button class="btn" data-struct="#ff4da6">Pink</button>
-                <button class="btn" data-struct="#ffd400">Yellow</button>
-                <button class="btn" data-struct="#ff7a00">Orange</button>
-                <button class="btn" data-struct="#7c3aed">Purple</button>
-              </div>
-
-              <div class="row row--stack">
-                <label class="label">Custom</label>
-                <div class="row">
-                  <input type="color" id="structureColor" class="color-input" value="#111111" />
-                  <button class="btn" id="applyStructureColor">Apply</button>
-                  <button class="btn btn--ghost" id="resetStructureColors">Reset</button>
+                <div class="hint">
+                  Модели: <b>public/models/courts</b> →
+                  <span class="mono" id="courtBaseHint"></span>
                 </div>
               </div>
 
-              <div class="note">
-                Красится только материал <b>Black</b>. Материалы типа <b>Black.001</b> не трогаются.
+              <button class="next" type="button" data-next="2">
+                Next step <span class="chev">›</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- STEP 2 -->
+          <section class="step" data-step="2">
+            <button class="stepHead" type="button">
+              <span class="stepNum">2</span>
+              <span class="stepTitle">Structure Color</span>
+            </button>
+
+            <div class="stepBody">
+              <div class="card">
+                <div class="cardTitle">Colors</div>
+
+                <div class="colorGrid">
+                  <button class="colorBtn" data-color="#1f6fff" type="button">Blue</button>
+                  <button class="colorBtn" data-color="#111111" type="button">Black</button>
+                  <button class="colorBtn" data-color="#2dbb4f" type="button">Green</button>
+                  <button class="colorBtn" data-color="#e83c3c" type="button">Red</button>
+                  <button class="colorBtn" data-color="#ff4bb5" type="button">Pink</button>
+                  <button class="colorBtn" data-color="#f5c400" type="button">Yellow</button>
+                  <button class="colorBtn" data-color="#ff7a00" type="button">Orange</button>
+                  <button class="colorBtn" data-color="#8a4dff" type="button">Purple</button>
+                </div>
+
+                <div class="customRow">
+                  <div class="customLabel">Custom</div>
+                  <input id="structureColor" type="color" value="#111111" />
+                  <button class="btn" id="applyStructureColor" type="button">Apply</button>
+                  <button class="btn ghost" id="resetStructureColors" type="button">Reset</button>
+                </div>
+
+                <div class="hint">
+                  Красится только материал <b>Black</b>. Материалы типа <b>Black.001</b> не трогаются.
+                </div>
+
+                <button class="btn btnWide ghost" id="restoreAllColors" type="button">
+                  Вернуть исходные цвета
+                </button>
               </div>
 
-              <div class="btnrow btnrow--single">
-                <button class="btn btn--ghost" id="resetAllColors">Вернуть исходные цвета</button>
+              <button class="next" type="button" data-next="3">
+                Next step <span class="chev">›</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- STEP 3 -->
+          <section class="step" data-step="3">
+            <button class="stepHead" type="button">
+              <span class="stepNum">3</span>
+              <span class="stepTitle">Lighting</span>
+            </button>
+
+            <div class="stepBody">
+              <div class="card">
+                <div class="field">
+                  <div class="fieldLabel">Lighting as model</div>
+                  <select id="lightsModel">
+                    <option value="none">Without lighting</option>
+                    <option value="top">Lights Top</option>
+                    <option value="posts4">Lights 4 Posts</option>
+                    <option value="variant4">4-variant</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <div class="fieldLabel">Scene lighting</div>
+                  <select id="lighting">
+                    <option value="studio">Studio</option>
+                    <option value="soft">Soft</option>
+                    <option value="contrast">Contrast</option>
+                  </select>
+                </div>
+
+                <div class="hint">
+                  “Lighting as model” — GLB слой из <b>public/models/lights</b>.<br />
+                  “Scene lighting” — свет рендера.
+                </div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div class="step">
-            <div class="step__head">
-              <div class="step__num">3</div>
-              <div class="step__title">Lighting</div>
-            </div>
-
-            <div class="card">
-              <div class="subttl">Lighting as model</div>
-              <div class="row">
-                <select id="lightsModel" class="select">
-                  <option value="none" selected>Without lighting</option>
-                  <option value="top">Lights Top</option>
-                  <option value="posts4">Lights 4 Posts</option>
-                  <option value="variant4">4 Variant</option>
-                </select>
-              </div>
-
-              <hr class="sep" />
-
-              <div class="subttl">Scene lighting</div>
-              <div class="row">
-                <select id="lighting" class="select">
-                  <option value="studio" selected>Studio</option>
-                  <option value="sunny">Sunny</option>
-                  <option value="arena">Arena</option>
-                  <option value="night">Night</option>
-                </select>
-              </div>
-
-              <div class="note">
-                “Lighting as model” — GLB слой из <b>public/models/lights</b>. “Scene lighting” — свет рендера.
-              </div>
-            </div>
-          </div>
-        </aside>
-      </div>
+        </div>
+      </aside>
     </div>
 
     <script type="module" src="/src/main.js"></script>

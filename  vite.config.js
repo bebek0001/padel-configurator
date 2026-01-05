@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
+  // важно для GitHub Pages: https://nikolayvorob89-dot.github.io/padel-configurator/
   base: '/padel-configurator/',
 })
