@@ -4,60 +4,28 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-// База пути (критично для GitHub Pages)
-const BASE = import.meta.env.BASE_URL
-
-// -----------------------------
-// SETTINGS
-// -----------------------------
-const LIGHTS_Y_LIFT_DEFAULT = 2.2
-const LIGHTS_Y_LIFT_BY_KEY = {
-  top: 7.5,      // регулируй тут высоту Lights Top
-  posts4: 2.2,
-  variant4: 2.2
-}
-
-// Модели корта (через BASE, без ведущего "/")
+// Базовые модели корта
 const COURT_MODEL_URLS = {
-  base: `${BASE}models/courts/base.glb`,
-  base_panoramic: `${BASE}models/courts/base_panoramic.glb`,
-  ultrapanoramic: `${BASE}models/courts/ultrapanoramic.glb`
+  base: '/models/courts/base.glb',
+  base_panoramic: '/models/courts/base_panoramic.glb',
+  ultrapanoramic: '/models/courts/ultrapanoramic.glb'
 }
 
-// Модели освещения (через BASE) + fallback на разные имена файлов
+// Модели освещения отдельным слоем
 const LIGHTS_MODEL_URLS = {
-  none: [`${BASE}models/lights/none.glb`],
-
-  top: [
-    `${BASE}models/lights/lights-top.glb`,
-    `${BASE}models/lights/top.glb`,
-    `${BASE}models/lights/lights_top.glb`,
-    `${BASE}models/lights/LightsTop.glb`
-  ],
-
-  posts4: [
-    `${BASE}models/lights/lights-4posts.glb`,
-    `${BASE}models/lights/4posts.glb`,
-    `${BASE}models/lights/lights_4posts.glb`,
-    `${BASE}models/lights/Lights4Posts.glb`
-  ],
-
-  variant4: [
-    `${BASE}models/lights/4-variant.glb`,
-    `${BASE}models/lights/variant4.glb`,
-    `${BASE}models/lights/4variant.glb`,
-    `${BASE}models/lights/Variant4.glb`
-  ]
+  none: '/models/lights/none.glb',
+  top: '/models/lights/lights-top.glb',
+  posts4: '/models/lights/lights-4posts.glb',
+  variant4: '/models/lights/4-variant.glb'
 }
 
-// красим строго только этот материал
-const PAINTABLE_STRUCTURE_MATERIAL_NAME = 'Black'
+// Красим ТОЛЬКО материал Black (Black.001 не трогаем)
+const PAINTABLE_STRUCTURE_NAMES = new Set(['Black'])
 
-// -----------------------------
-// DOM
-// -----------------------------
 const canvas = document.querySelector('#canvas')
 const statusEl = document.querySelector('#status')
+
+// UI элементы (могут отсутствовать — не ломаем 3D)
 const lightingSelect = document.querySelector('#lighting')
 const lightsModelSelect = document.querySelector('#lightsModel')
 const reframeBtn = document.querySelector('#reframe')
@@ -65,31 +33,8 @@ const reframeBtn = document.querySelector('#reframe')
 const structureColorInput = document.querySelector('#structureColor')
 const applyStructureColorBtn = document.querySelector('#applyStructureColor')
 const resetStructureColorsBtn = document.querySelector('#resetStructureColors')
+const resetAllColorsBtn = document.querySelector('#resetAllColors')
 
-// UI steps (панель-степпер)
-document.querySelectorAll('.stepHead').forEach((head) => {
-  head.addEventListener('click', () => {
-    const step = head.closest('.step')
-    if (!step) return
-    step.classList.toggle('is-open')
-  })
-})
-
-document.querySelectorAll('[data-next]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const next = btn.getAttribute('data-next')
-    const target = document.querySelector(`.step[data-step="${next}"]`)
-    if (!target) return
-
-    document.querySelectorAll('.step').forEach((s) => s.classList.remove('is-open'))
-    target.classList.add('is-open')
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  })
-})
-
-// -----------------------------
-// THREE
-// -----------------------------
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.outputColorSpace = THREE.SRGBColorSpace
@@ -110,31 +55,27 @@ controls.target.set(0, 1.2, 0)
 const loader = new GLTFLoader()
 const clock = new THREE.Clock()
 
+// Свет сцены
 const lightsGroup = new THREE.Group()
 scene.add(lightsGroup)
 
+// Мир (корт + отдельная модель освещения)
 const world = new THREE.Group()
 scene.add(world)
 
 let courtRoot = null
 let lightsRoot = null
-let currentLightsKey = 'none'
 
 let mixerCourt = null
 let mixerLights = null
 
+// оригинальные цвета для reset
 const originalMaterialColors = new Map()
 
 function setStatus(text) {
-  if (statusEl) statusEl.textContent = text || ''
+  if (!statusEl) return
+  statusEl.textContent = text || ''
 }
-
-// grid (можешь убрать, если не нужен)
-const grid = new THREE.GridHelper(40, 40, 0x223044, 0x141c28)
-grid.position.y = 0
-grid.material.opacity = 0.35
-grid.material.transparent = true
-scene.add(grid)
 
 function resize() {
   const w = canvas.clientWidth
@@ -146,6 +87,16 @@ function resize() {
 window.addEventListener('resize', resize)
 resize()
 
+function disposeRoot(root) {
+  if (!root) return
+  root.traverse((obj) => {
+    if (!obj.isMesh) return
+    obj.geometry?.dispose?.()
+    if (Array.isArray(obj.material)) obj.material.forEach((m) => m?.dispose?.())
+    else obj.material?.dispose?.()
+  })
+}
+
 function forgetMaterialColors(root) {
   if (!root) return
   root.traverse((obj) => {
@@ -155,16 +106,6 @@ function forgetMaterialColors(root) {
       if (!m) return
       originalMaterialColors.delete(m.uuid)
     })
-  })
-}
-
-function disposeRoot(root) {
-  if (!root) return
-  root.traverse((obj) => {
-    if (!obj.isMesh) return
-    obj.geometry?.dispose?.()
-    if (Array.isArray(obj.material)) obj.material.forEach((m) => m?.dispose?.())
-    else obj.material?.dispose?.()
   })
 }
 
@@ -193,11 +134,9 @@ function improveMaterials(root) {
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
     mats.forEach((m) => {
       if (!m) return
-
       if (!originalMaterialColors.has(m.uuid) && m.color) {
         originalMaterialColors.set(m.uuid, m.color.clone())
       }
-
       if ('metalness' in m) m.metalness = Math.min(m.metalness ?? 0, 1)
       if ('roughness' in m) m.roughness = m.roughness ?? 0.8
       m.needsUpdate = true
@@ -225,28 +164,6 @@ function restoreOriginalColors() {
   restore(lightsRoot)
 }
 
-// красим ТОЛЬКО "Black" (строго), Black.001 НЕ трогаем
-function setColorForStructure(root, colorHex) {
-  if (!root) return
-  const color = new THREE.Color(colorHex)
-
-  root.traverse((obj) => {
-    if (!obj.isMesh) return
-    const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
-    mats.forEach((m) => {
-      if (!m || !m.name || !m.color) return
-      if (m.name !== PAINTABLE_STRUCTURE_MATERIAL_NAME) return
-      m.color.copy(color)
-      m.needsUpdate = true
-    })
-  })
-}
-
-function setColorForStructureAll(colorHex) {
-  if (courtRoot) setColorForStructure(courtRoot, colorHex)
-  if (lightsRoot) setColorForStructure(lightsRoot, colorHex)
-}
-
 function frameCourtToView(root) {
   if (!root) return
 
@@ -256,9 +173,17 @@ function frameCourtToView(root) {
   const center = new THREE.Vector3()
   box.getCenter(center)
 
+  // центрируем по XZ, ставим на землю
   root.position.x += (0 - center.x)
   root.position.z += (0 - center.z)
   root.position.y += (0 - box.min.y)
+
+  // вместе с кортом двигаем слой освещения
+  if (lightsRoot) {
+    lightsRoot.position.x += (0 - center.x)
+    lightsRoot.position.z += (0 - center.z)
+    lightsRoot.position.y += (0 - box.min.y)
+  }
 
   const maxDim = Math.max(size.x, size.y, size.z)
   const dist = maxDim * 1.5
@@ -266,29 +191,6 @@ function frameCourtToView(root) {
   camera.position.set(dist, dist * 0.6, dist)
   controls.target.set(0, Math.min(maxDim * 0.4, 2.0), 0)
   controls.update()
-}
-
-function alignLightsToCourt() {
-  if (!courtRoot || !lightsRoot) return
-
-  const courtBox = new THREE.Box3().setFromObject(courtRoot)
-  const lightsBox = new THREE.Box3().setFromObject(lightsRoot)
-
-  const courtCenter = new THREE.Vector3()
-  const lightsCenter = new THREE.Vector3()
-  courtBox.getCenter(courtCenter)
-  lightsBox.getCenter(lightsCenter)
-
-  const dx = courtCenter.x - lightsCenter.x
-  const dz = courtCenter.z - lightsCenter.z
-
-  let dy = courtBox.min.y - lightsBox.min.y
-  const lift = (LIGHTS_Y_LIFT_BY_KEY[currentLightsKey] ?? LIGHTS_Y_LIFT_DEFAULT) || 0
-  dy += lift
-
-  lightsRoot.position.x += dx
-  lightsRoot.position.y += dy
-  lightsRoot.position.z += dz
 }
 
 function applyLightingPreset(preset) {
@@ -350,26 +252,9 @@ function applyLightingPreset(preset) {
   }
 }
 
-// Загрузка GLB с fallback
-async function loadGLTFWithFallback(urls) {
-  let lastErr = null
-  for (const url of urls) {
-    try {
-      const gltf = await loader.loadAsync(url)
-      return { gltf, usedUrl: url }
-    } catch (e) {
-      lastErr = e
-    }
-  }
-  throw lastErr
-}
-
 async function loadCourt(key) {
   const url = COURT_MODEL_URLS[key]
-  if (!url) {
-    setStatus(`Нет URL для корта: ${key}`)
-    return
-  }
+  if (!url) return setStatus(`Нет URL для корта: ${key}`)
 
   setStatus(`Загрузка корта: ${url}`)
   clearCourt()
@@ -386,7 +271,6 @@ async function loadCourt(key) {
 
     improveMaterials(courtRoot)
     frameCourtToView(courtRoot)
-    alignLightsToCourt()
 
     setStatus(`Ок: корт ${key}`)
   } catch (e) {
@@ -396,13 +280,8 @@ async function loadCourt(key) {
 }
 
 async function loadLightsModel(key) {
-  const urls = LIGHTS_MODEL_URLS[key]
-  if (!urls || !urls.length) {
-    setStatus(`Нет URL для освещения: ${key}`)
-    return
-  }
-
-  currentLightsKey = key
+  const url = LIGHTS_MODEL_URLS[key]
+  if (!url) return setStatus(`Нет URL для освещения: ${key}`)
 
   if (key === 'none') {
     clearLightsModel()
@@ -410,11 +289,11 @@ async function loadLightsModel(key) {
     return
   }
 
-  setStatus(`Загрузка освещения: ${key}`)
+  setStatus(`Загрузка освещения: ${url}`)
   clearLightsModel()
 
   try {
-    const { gltf, usedUrl } = await loadGLTFWithFallback(urls)
+    const gltf = await loader.loadAsync(url)
     lightsRoot = gltf.scene
     world.add(lightsRoot)
 
@@ -424,57 +303,83 @@ async function loadLightsModel(key) {
     }
 
     improveMaterials(lightsRoot)
-    alignLightsToCourt()
 
-    setStatus(`Ок: освещение ${key} (файл: ${usedUrl})`)
+    // чтобы совпало с позицией корта
+    if (courtRoot) frameCourtToView(courtRoot)
+
+    setStatus(`Ок: освещение ${key} (файл: ${url})`)
   } catch (e) {
     console.error(e)
-    setStatus(`Ошибка: не удалось загрузить освещение "${key}". Проверь public/models/lights`)
+    setStatus(`Ошибка загрузки освещения: ${url}`)
   }
 }
 
-function reframeView() {
-  if (courtRoot) frameCourtToView(courtRoot)
-  alignLightsToCourt()
+function setColorForStructure(root, colorHex) {
+  if (!root) return
+  const color = new THREE.Color(colorHex)
+
+  root.traverse((obj) => {
+    if (!obj.isMesh) return
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+    mats.forEach((m) => {
+      if (!m || !m.name || !m.color) return
+      // Красим ТОЛЬКО "Black"
+      if (PAINTABLE_STRUCTURE_NAMES.has(m.name)) {
+        m.color.copy(color)
+        m.needsUpdate = true
+      }
+    })
+  })
 }
 
-// -----------------------------
-// UI bindings
-// -----------------------------
+function setColorForStructureAll(colorHex) {
+  if (courtRoot) setColorForStructure(courtRoot, colorHex)
+  if (lightsRoot) setColorForStructure(lightsRoot, colorHex)
+}
+
+function reframeView() {
+  frameCourtToView(courtRoot || lightsRoot)
+}
+
+// grid пол
+const grid = new THREE.GridHelper(40, 40, 0x223044, 0x141c28)
+grid.position.y = 0
+grid.material.opacity = 0.35
+grid.material.transparent = true
+scene.add(grid)
+
+// UI: переключение корта
 document.querySelectorAll('input[name="court"]').forEach((el) => {
   el.addEventListener('change', (e) => loadCourt(e.target.value))
 })
 
-reframeBtn?.addEventListener('click', () => reframeView())
+// UI: центрировать
+if (reframeBtn) reframeBtn.addEventListener('click', () => reframeView())
 
-lightingSelect?.addEventListener('change', (e) => applyLightingPreset(e.target.value))
+// UI: пресет света сцены
+if (lightingSelect) lightingSelect.addEventListener('change', (e) => applyLightingPreset(e.target.value))
 
-lightsModelSelect?.addEventListener('change', (e) => loadLightsModel(e.target.value))
+// UI: модель освещения
+if (lightsModelSelect) lightsModelSelect.addEventListener('change', (e) => loadLightsModel(e.target.value))
 
+// UI: быстрые цвета структуры
 document.querySelectorAll('[data-struct]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const hex = btn.getAttribute('data-struct')
-    if (hex) setColorForStructureAll(hex)
-  })
+  btn.addEventListener('click', () => setColorForStructureAll(btn.getAttribute('data-struct')))
 })
 
-applyStructureColorBtn?.addEventListener('click', () => {
-  const hex = structureColorInput?.value
-  if (hex) setColorForStructureAll(hex)
-})
+if (applyStructureColorBtn && structureColorInput) {
+  applyStructureColorBtn.addEventListener('click', () => setColorForStructureAll(structureColorInput.value))
+}
 
-resetStructureColorsBtn?.addEventListener('click', () => restoreOriginalColors())
+if (resetStructureColorsBtn) resetStructureColorsBtn.addEventListener('click', () => restoreOriginalColors())
+if (resetAllColorsBtn) resetAllColorsBtn.addEventListener('click', () => restoreOriginalColors())
 
-// -----------------------------
-// Start
-// -----------------------------
+// Старт
 applyLightingPreset('studio')
 loadCourt('base')
 loadLightsModel('none')
 
-// -----------------------------
-// Render
-// -----------------------------
+// Рендер
 function tick() {
   const dt = clock.getDelta()
   if (mixerCourt) mixerCourt.update(dt)
