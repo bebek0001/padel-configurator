@@ -4,6 +4,9 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+// База пути (критично для GitHub Pages)
+const BASE = import.meta.env.BASE_URL
+
 // -----------------------------
 // SETTINGS
 // -----------------------------
@@ -14,34 +17,36 @@ const LIGHTS_Y_LIFT_BY_KEY = {
   variant4: 2.2
 }
 
+// Модели корта (через BASE, без ведущего "/")
 const COURT_MODEL_URLS = {
-  base: '/models/courts/base.glb',
-  base_panoramic: '/models/courts/base_panoramic.glb',
-  ultrapanoramic: '/models/courts/ultrapanoramic.glb'
+  base: `${BASE}models/courts/base.glb`,
+  base_panoramic: `${BASE}models/courts/base_panoramic.glb`,
+  ultrapanoramic: `${BASE}models/courts/ultrapanoramic.glb`
 }
 
+// Модели освещения (через BASE) + fallback на разные имена файлов
 const LIGHTS_MODEL_URLS = {
-  none: ['/models/lights/none.glb'],
+  none: [`${BASE}models/lights/none.glb`],
 
   top: [
-    '/models/lights/lights-top.glb',
-    '/models/lights/top.glb',
-    '/models/lights/lights_top.glb',
-    '/models/lights/LightsTop.glb'
+    `${BASE}models/lights/lights-top.glb`,
+    `${BASE}models/lights/top.glb`,
+    `${BASE}models/lights/lights_top.glb`,
+    `${BASE}models/lights/LightsTop.glb`
   ],
 
   posts4: [
-    '/models/lights/lights-4posts.glb',
-    '/models/lights/4posts.glb',
-    '/models/lights/lights_4posts.glb',
-    '/models/lights/Lights4Posts.glb'
+    `${BASE}models/lights/lights-4posts.glb`,
+    `${BASE}models/lights/4posts.glb`,
+    `${BASE}models/lights/lights_4posts.glb`,
+    `${BASE}models/lights/Lights4Posts.glb`
   ],
 
   variant4: [
-    '/models/lights/4-variant.glb',
-    '/models/lights/variant4.glb',
-    '/models/lights/4variant.glb',
-    '/models/lights/Variant4.glb'
+    `${BASE}models/lights/4-variant.glb`,
+    `${BASE}models/lights/variant4.glb`,
+    `${BASE}models/lights/4variant.glb`,
+    `${BASE}models/lights/Variant4.glb`
   ]
 }
 
@@ -61,7 +66,7 @@ const structureColorInput = document.querySelector('#structureColor')
 const applyStructureColorBtn = document.querySelector('#applyStructureColor')
 const resetStructureColorsBtn = document.querySelector('#resetStructureColors')
 
-// UI steps
+// UI steps (панель-степпер)
 document.querySelectorAll('.stepHead').forEach((head) => {
   head.addEventListener('click', () => {
     const step = head.closest('.step')
@@ -76,7 +81,6 @@ document.querySelectorAll('[data-next]').forEach((btn) => {
     const target = document.querySelector(`.step[data-step="${next}"]`)
     if (!target) return
 
-    // закрываем предыдущие (как “guided flow”)
     document.querySelectorAll('.step').forEach((s) => s.classList.remove('is-open'))
     target.classList.add('is-open')
     target.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -346,6 +350,7 @@ function applyLightingPreset(preset) {
   }
 }
 
+// Загрузка GLB с fallback
 async function loadGLTFWithFallback(urls) {
   let lastErr = null
   for (const url of urls) {
