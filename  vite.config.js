@@ -1,8 +1,5 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from 'vite'
 
 export default defineConfig({
-  plugins: [react()],
-  // ВАЖНО для GitHub Pages проекта (репо) — базовый путь = имя репозитория
-  base: "/padel-configurator/",
-});
+  base: '/padel-configurator/',
+})
