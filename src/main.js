@@ -4,19 +4,23 @@ import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+// ВАЖНО: BASE_URL = '/padel-configurator/' на Pages и '/' локально
+const BASE = import.meta.env.BASE_URL
+const u = (p) => `${BASE}${p.replace(/^\/+/, '')}`
+
 // Базовые модели корта
 const COURT_MODEL_URLS = {
-  base: '/models/courts/base.glb',
-  base_panoramic: '/models/courts/base_panoramic.glb',
-  ultrapanoramic: '/models/courts/ultrapanoramic.glb'
+  base: u('models/courts/base.glb'),
+  base_panoramic: u('models/courts/base_panoramic.glb'),
+  ultrapanoramic: u('models/courts/ultrapanoramic.glb'),
 }
 
 // Модели освещения отдельным слоем
 const LIGHTS_MODEL_URLS = {
-  none: '/models/lights/none.glb',
-  top: '/models/lights/lights-top.glb',
-  posts4: '/models/lights/lights-4posts.glb',
-  variant4: '/models/lights/4-variant.glb'
+  none: u('models/lights/none.glb'),
+  top: u('models/lights/lights-top.glb'),
+  posts4: u('models/lights/lights-4posts.glb'),
+  variant4: u('models/lights/4-variant.glb'),
 }
 
 // Красим ТОЛЬКО материал Black (Black.001 не трогаем)
@@ -25,7 +29,7 @@ const PAINTABLE_STRUCTURE_NAMES = new Set(['Black'])
 const canvas = document.querySelector('#canvas')
 const statusEl = document.querySelector('#status')
 
-// UI элементы (могут отсутствовать — не ломаем 3D)
+// UI элементы
 const lightingSelect = document.querySelector('#lighting')
 const lightsModelSelect = document.querySelector('#lightsModel')
 const reframeBtn = document.querySelector('#reframe')
@@ -173,12 +177,10 @@ function frameCourtToView(root) {
   const center = new THREE.Vector3()
   box.getCenter(center)
 
-  // центрируем по XZ, ставим на землю
   root.position.x += (0 - center.x)
   root.position.z += (0 - center.z)
   root.position.y += (0 - box.min.y)
 
-  // вместе с кортом двигаем слой освещения
   if (lightsRoot) {
     lightsRoot.position.x += (0 - center.x)
     lightsRoot.position.z += (0 - center.z)
@@ -304,7 +306,6 @@ async function loadLightsModel(key) {
 
     improveMaterials(lightsRoot)
 
-    // чтобы совпало с позицией корта
     if (courtRoot) frameCourtToView(courtRoot)
 
     setStatus(`Ок: освещение ${key} (файл: ${url})`)
@@ -323,7 +324,6 @@ function setColorForStructure(root, colorHex) {
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
     mats.forEach((m) => {
       if (!m || !m.name || !m.color) return
-      // Красим ТОЛЬКО "Black"
       if (PAINTABLE_STRUCTURE_NAMES.has(m.name)) {
         m.color.copy(color)
         m.needsUpdate = true
