@@ -1,149 +1,130 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import * as THREE from 'three'
+import React, { Suspense, useEffect, useMemo, useRef } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, useGLTF } from '@react-three/drei'
+import { OrbitControls, Environment, useGLTF } from '@react-three/drei'
+import * as THREE from 'three'
 
-function useCenteredGLTF(url) {
-  const gltf = useGLTF(url, true)
-  const center = useMemo(() => new THREE.Vector3(), [])
-  const size = useMemo(() => new THREE.Vector3(), [])
-  const box = useMemo(() => new THREE.Box3(), [])
-
-  useLayoutEffect(() => {
-    if (!gltf?.scene) return
-    box.setFromObject(gltf.scene)
-    box.getCenter(center)
-    box.getSize(size)
-  }, [gltf, box, center, size])
-
-  return { gltf, center, size }
+function applyColorToMaterialBlack(root, hex) {
+  const col = new THREE.Color(hex)
+  root.traverse((obj) => {
+    if (!obj.isMesh) return
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+    for (const m of mats) {
+      if (!m) continue
+      if (m.name === 'Black') {
+        if (m.color) m.color.copy(col)
+        m.needsUpdate = true
+      }
+    }
+  })
 }
 
-function SceneContent({ courtUrl, lightsUrl, structureColor }) {
-  const courtGroup = useRef()
-  const lightsGroup = useRef()
-  const [shift, setShift] = useState(() => new THREE.Vector3(0, 0, 0))
-
-  const court = useCenteredGLTF(courtUrl)
-  const lights = lightsUrl ? useCenteredGLTF(lightsUrl) : null
-
-  // 1) Сдвиг берём ТОЛЬКО по корту (его центр)
-  useLayoutEffect(() => {
-    if (!court?.gltf?.scene) return
-    setShift(court.center.clone().multiplyScalar(-1))
-  }, [court?.gltf, court?.center])
-
-  // 2) Применяем одинаковый сдвиг корту и свету -> больше не разъезжаются
-  useLayoutEffect(() => {
-    if (courtGroup.current) {
-      courtGroup.current.position.copy(shift)
-    }
-    if (lightsGroup.current) {
-      lightsGroup.current.position.copy(shift)
-    }
-  }, [shift])
-
-  // 3) Перекраска только материала "Black" (и НЕ трогаем Black.001 и т.п.)
+function Model({ url, onLoaded, onRoot }) {
+  const gltf = useGLTF(url)
   useEffect(() => {
-    const scene = court?.gltf?.scene
-    if (!scene) return
+    onRoot?.(gltf.scene)
+    onLoaded?.()
+  }, [gltf, onLoaded, onRoot])
+  return <primitive object={gltf.scene} />
+}
 
-    const targetName = 'Black'
-    scene.traverse((obj) => {
-      if (!obj.isMesh) return
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
-      mats.forEach((m) => {
-        if (!m) return
-        if (m.name === targetName) {
-          if (m.color) m.color.set(structureColor)
-          m.needsUpdate = true
-        }
-      })
-    })
-  }, [court?.gltf, structureColor])
-
-  // 4) Fit view по событию кнопки
+function SceneContent({ courtUrl, lightsUrl, structureColor, scenePreset }) {
+  const groupRef = useRef()
   const controlsRef = useRef()
-  const cameraRef = useRef()
 
+  // считаем bbox только для target/камеры, без смещения моделей
+  const fitTo = () => {
+    if (!groupRef.current || !controlsRef.current) return
+    const box = new THREE.Box3().setFromObject(groupRef.current)
+    if (box.isEmpty()) return
+    const center = box.getCenter(new THREE.Vector3())
+    const size = box.getSize(new THREE.Vector3())
+    const radius = Math.max(size.x, size.y, size.z) * 0.9
+
+    controlsRef.current.target.copy(center)
+    controlsRef.current.update()
+
+    // камера: лёгкий “как на сайте” угол
+    const cam = controlsRef.current.object
+    cam.position.set(center.x + radius * 1.2, center.y + radius * 0.65, center.z + radius * 1.25)
+    cam.lookAt(center)
+  }
+
+  const onCourtRoot = (root) => {
+    applyColorToMaterialBlack(root, structureColor)
+  }
+
+  const onCourtLoaded = () => {
+    // после загрузки корта подгоняем камеру
+    setTimeout(fitTo, 0)
+  }
+
+  const onLightsRoot = (root) => {
+    // свет как модель — тоже НЕ трогаем позиционно
+    // если хочешь, можно тут делать мелкие правки материала/интенсивности, но не надо двигать
+  }
+
+  const onLightsLoaded = () => {
+    // если свет подгрузился позже корта — ещё раз fit
+    setTimeout(fitTo, 0)
+  }
+
+  // обновление цвета структуры без перезагрузки
   useEffect(() => {
-    const onFit = () => {
-      if (!cameraRef.current || !controlsRef.current || !court?.gltf?.scene) return
-
-      const box = new THREE.Box3().setFromObject(court.gltf.scene)
-      const size = new THREE.Vector3()
-      const center = new THREE.Vector3()
-      box.getSize(size)
-      box.getCenter(center)
-
-      const maxDim = Math.max(size.x, size.y, size.z)
-      const fov = cameraRef.current.fov * (Math.PI / 180)
-      let camZ = Math.abs(maxDim / 2 / Math.tan(fov / 2))
-      camZ *= 1.6
-
-      cameraRef.current.position.set(center.x + camZ, center.y + camZ * 0.35, center.z + camZ)
-      cameraRef.current.near = camZ / 100
-      cameraRef.current.far = camZ * 100
-      cameraRef.current.updateProjectionMatrix()
-
-      controlsRef.current.target.copy(center)
-      controlsRef.current.update()
-    }
-
-    window.addEventListener('fit-view', onFit)
-    return () => window.removeEventListener('fit-view', onFit)
-  }, [court?.gltf])
+    if (!groupRef.current) return
+    // красим весь groupRef (там и корт и свет), но меняется только material.name === "Black"
+    applyColorToMaterialBlack(groupRef.current, structureColor)
+  }, [structureColor])
 
   return (
     <>
-      <perspectiveCamera
-        ref={cameraRef}
-        makeDefault
-        fov={45}
-        position={[6, 4, 6]}
-      />
-
-      {/* базовый свет сцены */}
-      <ambientLight intensity={0.6} />
-      <directionalLight intensity={1.0} position={[6, 10, 6]} />
-
-      {/* корт */}
-      <group ref={courtGroup}>
-        <primitive object={court.gltf.scene} />
-      </group>
-
-      {/* освещение как модель */}
-      {lights?.gltf?.scene && (
-        <group ref={lightsGroup}>
-          <primitive object={lights.gltf.scene} />
-        </group>
-      )}
-
       <OrbitControls
         ref={controlsRef}
-        makeDefault
         enableDamping
         dampingFactor={0.08}
-        rotateSpeed={0.7}
+        rotateSpeed={0.6}
         panSpeed={0.8}
-        zoomSpeed={0.8}
+        zoomSpeed={0.9}
+        makeDefault
       />
+
+      <ambientLight intensity={0.35} />
+      <directionalLight position={[10, 12, 6]} intensity={0.9} />
+
+      <Environment preset={scenePreset} />
+
+      <group ref={groupRef}>
+        <Suspense fallback={null}>
+          <Model url={courtUrl} onLoaded={onCourtLoaded} onRoot={onCourtRoot} />
+        </Suspense>
+
+        {/* lightsUrl может быть none.glb — тогда будет пустая сцена/ничего страшного */}
+        <Suspense fallback={null}>
+          <Model url={lightsUrl} onLoaded={onLightsLoaded} onRoot={onLightsRoot} />
+        </Suspense>
+      </group>
     </>
   )
 }
 
-export default function SceneView({ courtUrl, lightsUrl, structureColor }) {
+export default function SceneView({ courtUrl, lightsUrl, structureColor, scenePreset }) {
+  // прелоад без “/models/..” — только то, что приходит (уже правильное)
+  useMemo(() => {
+    if (courtUrl) useGLTF.preload(courtUrl)
+    if (lightsUrl) useGLTF.preload(lightsUrl)
+  }, [courtUrl, lightsUrl])
+
   return (
-    <div className="pg-canvas-wrap">
-      <Canvas
-        dpr={[1, 2]}
-        gl={{ antialias: true, alpha: false }}
-      >
-        <color attach="background" args={['#070b10']} />
-        <SceneContent courtUrl={courtUrl} lightsUrl={lightsUrl} structureColor={structureColor} />
-      </Canvas>
-    </div>
+    <Canvas
+      camera={{ fov: 45, position: [10, 6, 10], near: 0.1, far: 500 }}
+      gl={{ antialias: true, alpha: false }}
+    >
+      <color attach="background" args={['#070a0f']} />
+      <SceneContent
+        courtUrl={courtUrl}
+        lightsUrl={lightsUrl}
+        structureColor={structureColor}
+        scenePreset={scenePreset}
+      />
+    </Canvas>
   )
 }
-
-useGLTF.preload('/models/courts/base.glb')
