@@ -15,11 +15,11 @@ const assetUrl = (p) => `${BASE_URL}${String(p).replace(/^\/+/, '')}`
 // -----------------------------
 // SETTINGS
 // -----------------------------
-const LIGHTS_Y_LIFT_DEFAULT = 2.2
+const LIGHTS_Y_LIFT_DEFAULT = 0.0
 const LIGHTS_Y_LIFT_BY_KEY = {
-  top: 7.5,
-  posts4: 2.2,
-  variant4: 2.2
+  top: 3.5,
+  posts4: 1.0,
+  variant4: 0.3
 }
 
 // ВАЖНО: имена файлов должны совпадать с public/models/courts
