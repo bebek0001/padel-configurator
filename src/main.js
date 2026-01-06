@@ -120,7 +120,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 2.0
+renderer.toneMappingExposure = 5.0
 
 const scene = new THREE.Scene()
 scene.background = new THREE.Color(0x0b0d13)
