@@ -27,12 +27,28 @@ const LIGHTS_Y_LIFT_BY_KEY = {
 const COURT_MODEL_URLS = {
   base: assetUrl('models/courts/base.glb'),
   base_panoramic: assetUrl('models/courts/base_panoramic.glb'),
-  ultra_panoramic: assetUrl('models/courts/ultra_panoramic.glb')
+  ultra_panoramic: assetUrl('models/courts/ultra_panoramic.glb'),
+  // временный плейсхолдер до готовой модели single
+  single: assetUrl('models/courts/base.glb')
 }
 
-// lights — оставляем как у тебя в папке
+const COURT_LABELS = {
+  base: 'Классический корт',
+  base_panoramic: 'Панорамный корт',
+  ultra_panoramic: 'Ультра-панорамный корт',
+  single: 'Single — корт'
+}
+
+const LIGHT_LABELS = {
+  none: 'Без освещения',
+  top: 'Свет сверху',
+  posts4: 'Освещение а 4 стойках',
+  variant4: '4-й вариант'
+}
+
+// lights — оставляем как у тебя в папке, кроме "none": он теперь без GLB
 const LIGHTS_MODEL_URLS = {
-  none: [assetUrl('models/lights/none.glb')],
+  none: [],
 
   top: [
     assetUrl('models/lights/lights-top.glb'),
@@ -73,8 +89,6 @@ const applyStructureColorBtn = document.querySelector('#applyStructureColor')
 const resetStructureColorsBtn = document.querySelector('#resetStructureColors')
 const restoreAllColorsBtn = document.querySelector('#restoreAllColors')
 
-const courtBaseHint = document.querySelector('#courtBaseHint')
-
 // UI steps
 document.querySelectorAll('.stepHead').forEach((head) => {
   head.addEventListener('click', () => {
@@ -106,7 +120,7 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 1.9
+renderer.toneMappingExposure = 1.7
 
 const scene = new THREE.Scene()
 scene.background = new THREE.Color(0x141c28)
@@ -124,6 +138,10 @@ const clock = new THREE.Clock()
 
 const world = new THREE.Group()
 scene.add(world)
+
+const courtFocusTarget = new THREE.Object3D()
+courtFocusTarget.position.set(0, 1, 0)
+scene.add(courtFocusTarget)
 
 let courtRoot = null
 let lightsRoot = null
@@ -240,36 +258,50 @@ function setSceneLightingPreset(preset) {
   scene.traverse((o) => {
     if (o.isLight && o.userData?.isPresetLight) toRemove.push(o)
   })
-  toRemove.forEach((l) => scene.remove(l))
+  toRemove.forEach((l) => {
+    scene.remove(l)
+    if (l.dispose) l.dispose()
+  })
 
   const add = (light) => {
     light.userData.isPresetLight = true
     scene.add(light)
   }
 
-  if (preset === 'soft') {
-    const a = new THREE.AmbientLight(0xffffff, 0.65)
-    add(a)
-    const d = new THREE.DirectionalLight(0xffffff, 0.9)
-    d.position.set(6, 10, 6)
-    add(d)
-  } else if (preset === 'contrast') {
-    const a = new THREE.AmbientLight(0xffffff, 0.35)
-    add(a)
-    const d1 = new THREE.DirectionalLight(0xffffff, 1.25)
-    d1.position.set(8, 12, 4)
-    add(d1)
-    const d2 = new THREE.DirectionalLight(0xffffff, 0.55)
-    d2.position.set(-6, 6, -8)
-    add(d2)
-  } else {
-    // studio
-    const a = new THREE.AmbientLight(0xffffff, 0.45)
-    add(a)
-    const d = new THREE.DirectionalLight(0xffffff, 1.1)
-    d.position.set(7, 10, 5)
-    add(d)
+  const createSpot = (position, intensity, angle = Math.PI / 5, color = 0xf6e3b4) => {
+    const spot = new THREE.SpotLight(color, intensity, 60, angle, 0.45)
+    spot.position.set(...position)
+    spot.target = courtFocusTarget
+    spot.castShadow = true
+    spot.shadow.mapSize.set(2048, 2048)
+    return spot
   }
+
+  const ambientIntensity = preset === 'contrast' ? 0.38 : 0.55
+  const keyIntensity = preset === 'soft' ? 0.95 : 1.2
+  const fillIntensity = preset === 'contrast' ? 0.45 : 0.35
+
+  add(new THREE.AmbientLight(0xf8fbff, ambientIntensity))
+
+  const key = new THREE.DirectionalLight(0xffffff, keyIntensity)
+  key.position.set(7, 10, 5)
+  key.castShadow = true
+  add(key)
+
+  const fill = new THREE.DirectionalLight(0xc8d8ff, fillIntensity)
+  fill.position.set(-6, 5, -6)
+  add(fill)
+
+  const back = new THREE.DirectionalLight(0x88aaff, 0.25)
+  back.position.set(0, 7, -4)
+  add(back)
+
+  add(createSpot([0, 8, 1], preset === 'contrast' ? 2.1 : 1.8))
+  add(createSpot([-6, 5.5, 5], 1.35, Math.PI / 6, 0xf9dd9e))
+
+  const rim = new THREE.PointLight(0x78a9ff, 0.55, 20)
+  rim.position.set(4, 3, -5)
+  add(rim)
 }
 
 function fitCameraToObject(obj, offset = 1.35) {
@@ -277,6 +309,8 @@ function fitCameraToObject(obj, offset = 1.35) {
   const box = new THREE.Box3().setFromObject(obj)
   const size = box.getSize(new THREE.Vector3())
   const center = box.getCenter(new THREE.Vector3())
+
+  courtFocusTarget.position.copy(center)
 
   const maxSize = Math.max(size.x, size.y, size.z)
   const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360))
@@ -321,7 +355,7 @@ async function loadCourt(key) {
   if (!url) return
 
   clearCourt()
-  setStatus('Загрузка...')
+  setStatus('Загрузка корта...')
 
   try {
     const gltf = await loadGLB(url)
@@ -339,7 +373,8 @@ async function loadCourt(key) {
     fitCameraToObject(courtRoot, 1.35)
     placeLightsOverCourt()
 
-    setStatus(`Ок: корт ${key}\n${url}`)
+    const label = COURT_LABELS[key] ?? key
+    setStatus(`Корт загружен: ${label}`)
   } catch (e) {
     console.error(e)
     setStatus(`Ошибка загрузки корта: ${url}`)
@@ -350,13 +385,18 @@ async function loadLightsModel(key) {
   currentLightsKey = key
   clearLightsModel()
 
+  if (key === 'none') {
+    setStatus('Освещение отключено')
+    return
+  }
+
   const candidates = LIGHTS_MODEL_URLS[key]
   if (!candidates || !candidates.length) {
     setStatus(`Нет путей для освещения "${key}"`)
     return
   }
 
-  setStatus('Загрузка...')
+  setStatus('Загрузка освещения...')
 
   let lastErr = null
   for (const url of candidates) {
@@ -374,7 +414,8 @@ async function loadLightsModel(key) {
 
       // важно: после загрузки света ставим его НАД КОРТОМ
       placeLightsOverCourt()
-      setStatus(`Ок: освещение ${key}\n${url}`)
+      const label = LIGHT_LABELS[key] ?? key
+      setStatus(`Освещение загружено: ${label}`)
       return
     } catch (e) {
       lastErr = e
@@ -407,10 +448,6 @@ function paintStructure(hex) {
 // -----------------------------
 // UI wiring
 // -----------------------------
-if (courtBaseHint) {
-  courtBaseHint.textContent = `${BASE_URL}models/courts/…`
-}
-
 lightingSelect?.addEventListener('change', (e) => {
   setSceneLightingPreset(e.target.value)
 })
