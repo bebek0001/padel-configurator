@@ -16,11 +16,7 @@ const assetUrl = (p) => `${BASE_URL}${String(p).replace(/^\/+/, '')}`
 // SETTINGS
 // -----------------------------
 const LIGHTS_Y_LIFT_DEFAULT = 0.0
-const LIGHTS_Y_LIFT_BY_KEY = {
-  top: 3.5,
-  posts4: 1.0,
-  variant4: 0.3
-}
+const LIGHTS_Y_LIFT_BY_KEY = {}
 
 // ВАЖНО: имена файлов должны совпадать с public/models/courts
 // У тебя сейчас: base.glb, base_panoramic.glb, ultra_panoramic.glb
@@ -45,9 +41,14 @@ const COURT_LABELS = {
 
 const LIGHT_LABELS_DEFAULT = {
   none: 'Без освещения',
-  top: 'Свет сверху',
-  posts4: 'Освещение на 4 стойках',
-  variant4: '4-й вариант'
+  padel_1: 'Вариант 1',
+  padel_2: 'Вариант 2',
+  padel_3: 'Вариант 3',
+  padel_4: 'Вариант 4',
+  padel_5: 'Вариант 5',
+  padel_6: 'Вариант 6',
+  padel_7: 'Вариант 7',
+  padel_8: 'Вариант 8'
 }
 
 const LIGHT_LABELS_SOLO = {
@@ -62,30 +63,25 @@ const LIGHT_LABELS_SOLO = {
   solo_8: 'Вариант 8'
 }
 
-// lights — оставляем как у тебя в папке, кроме "none": он теперь без GLB
+const buildPadelLightCandidates = (variant) => ([
+  assetUrl(`models/lights/padel_${variant}.glb`),
+  assetUrl(`models/lights/padel-${variant}.glb`),
+  assetUrl(`models/lights/padel${variant}.glb`),
+  assetUrl(`models/lights/Padel_${variant}.glb`),
+  assetUrl(`models/lights/Padel-${variant}.glb`),
+  assetUrl(`models/lights/Padel${variant}.glb`)
+])
+
 const LIGHTS_MODEL_URLS_DEFAULT = {
   none: [],
-
-  top: [
-    assetUrl('models/lights/lights-top.glb'),
-    assetUrl('models/lights/top.glb'),
-    assetUrl('models/lights/lights_top.glb'),
-    assetUrl('models/lights/LightsTop.glb')
-  ],
-
-  posts4: [
-    assetUrl('models/lights/lights-4posts.glb'),
-    assetUrl('models/lights/4posts.glb'),
-    assetUrl('models/lights/lights_4posts.glb'),
-    assetUrl('models/lights/Lights4Posts.glb')
-  ],
-
-  variant4: [
-    assetUrl('models/lights/4-variant.glb'),
-    assetUrl('models/lights/variant4.glb'),
-    assetUrl('models/lights/4variant.glb'),
-    assetUrl('models/lights/Variant4.glb')
-  ]
+  padel_1: buildPadelLightCandidates(1),
+  padel_2: buildPadelLightCandidates(2),
+  padel_3: buildPadelLightCandidates(3),
+  padel_4: buildPadelLightCandidates(4),
+  padel_5: buildPadelLightCandidates(5),
+  padel_6: buildPadelLightCandidates(6),
+  padel_7: buildPadelLightCandidates(7),
+  padel_8: buildPadelLightCandidates(8)
 }
 
 const buildSoloLightCandidates = (variant) => ([
