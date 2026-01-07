@@ -127,7 +127,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.toneMappingExposure = 1.7
 
 const scene = new THREE.Scene()
-scene.background = new THREE.Color(0x141c28)
+scene.background = new THREE.Color(0x06070a)
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500)
 camera.position.set(6, 4, 10)
