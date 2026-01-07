@@ -24,12 +24,16 @@ const LIGHTS_Y_LIFT_BY_KEY = {
 
 // ВАЖНО: имена файлов должны совпадать с public/models/courts
 // У тебя сейчас: base.glb, base_panoramic.glb, ultra_panoramic.glb
-const COURT_MODEL_URLS = {
-  base: assetUrl('models/courts/base.glb'),
-  base_panoramic: assetUrl('models/courts/base_panoramic.glb'),
-  ultra_panoramic: assetUrl('models/courts/ultra_panoramic.glb'),
-  // временный плейсхолдер до готовой модели single
-  single: assetUrl('models/courts/base.glb')
+const COURT_MODEL_CANDIDATES = {
+  base: [assetUrl('models/courts/base.glb')],
+  base_panoramic: [assetUrl('models/courts/base_panoramic.glb')],
+  ultra_panoramic: [assetUrl('models/courts/ultra_panoramic.glb')],
+  single: [
+    assetUrl('models/courts/Single_cort.glb'),
+    assetUrl('models/courts/single_cort.glb'),
+    assetUrl('models/courts/Single_court.glb'),
+    assetUrl('models/courts/single_court.glb')
+  ]
 }
 
 const COURT_LABELS = {
@@ -42,7 +46,7 @@ const COURT_LABELS = {
 const LIGHT_LABELS = {
   none: 'Без освещения',
   top: 'Свет сверху',
-  posts4: 'Освещение а 4 стойках',
+  posts4: 'Освещение на 4 стойках',
   variant4: '4-й вариант'
 }
 
@@ -120,10 +124,10 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.ACESFilmicToneMapping
-renderer.toneMappingExposure = 5.0
+renderer.toneMappingExposure = 1.7
 
 const scene = new THREE.Scene()
-scene.background = new THREE.Color(0x0b0d13)
+scene.background = new THREE.Color(0x141c28)
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500)
 camera.position.set(6, 4, 10)
@@ -351,34 +355,40 @@ function loadGLB(url) {
 }
 
 async function loadCourt(key) {
-  const url = COURT_MODEL_URLS[key]
-  if (!url) return
+  const candidates = COURT_MODEL_CANDIDATES[key]
+  if (!candidates || !candidates.length) return
 
   clearCourt()
   setStatus('Загрузка корта...')
 
-  try {
-    const gltf = await loadGLB(url)
-    courtRoot = gltf.scene
-    improveMaterials(courtRoot)
-    world.add(courtRoot)
+  let lastErr = null
+  for (const url of candidates) {
+    try {
+      const gltf = await loadGLB(url)
+      courtRoot = gltf.scene
+      improveMaterials(courtRoot)
+      world.add(courtRoot)
 
-    mixerCourt = null
-    if (gltf.animations && gltf.animations.length) {
-      mixerCourt = new THREE.AnimationMixer(courtRoot)
-      gltf.animations.forEach((clip) => mixerCourt.clipAction(clip).play())
+      mixerCourt = null
+      if (gltf.animations && gltf.animations.length) {
+        mixerCourt = new THREE.AnimationMixer(courtRoot)
+        gltf.animations.forEach((clip) => mixerCourt.clipAction(clip).play())
+      }
+
+      // после загрузки корта подгоняем камеру и переставляем свет
+      fitCameraToObject(courtRoot, 1.35)
+      placeLightsOverCourt()
+
+      const label = COURT_LABELS[key] ?? key
+      setStatus(`Корт загружен: ${label}`)
+      return
+    } catch (e) {
+      lastErr = e
     }
-
-    // после загрузки корта подгоняем камеру и переставляем свет
-    fitCameraToObject(courtRoot, 1.35)
-    placeLightsOverCourt()
-
-    const label = COURT_LABELS[key] ?? key
-    setStatus(`Корт загружен: ${label}`)
-  } catch (e) {
-    console.error(e)
-    setStatus(`Ошибка загрузки корта: ${url}`)
   }
+
+  console.error(lastErr)
+  setStatus(`Ошибка загрузки корта: ${candidates[0]}`)
 }
 
 async function loadLightsModel(key) {
