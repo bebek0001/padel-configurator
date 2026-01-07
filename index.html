@@ -73,6 +73,36 @@
           <section class="step" data-step="2">
             <button class="stepHead" type="button">
               <span class="stepNum">2</span>
+              <span class="stepTitle">Освещение</span>
+            </button>
+
+            <div class="stepBody">
+              <div class="card">
+                <div class="field">
+                  <div class="fieldLabel">Модель освещения</div>
+                  <select id="lightsModel"></select>
+                </div>
+
+                <div class="field">
+                  <div class="fieldLabel">Свет сцены</div>
+                  <select id="lighting">
+                    <option value="studio">Студия</option>
+                    <option value="soft">Мягкий</option>
+                    <option value="contrast">Контрастный</option>
+                  </select>
+                </div>
+              </div>
+
+              <button class="next" type="button" data-next="3">
+                Далее <span class="chev">›</span>
+              </button>
+            </div>
+          </section>
+
+          <!-- STEP 3 -->
+          <section class="step" data-step="3">
+            <button class="stepHead" type="button">
+              <span class="stepNum">3</span>
               <span class="stepTitle">Цвет конструкции</span>
             </button>
 
@@ -99,43 +129,8 @@
                 </div>
 
                 <button class="btn btnWide ghost" id="restoreAllColors" type="button">
-                  Вернуть исходные цвета
+                  Вернуть исходне цвета
                 </button>
-              </div>
-
-              <button class="next" type="button" data-next="3">
-                Далее <span class="chev">›</span>
-              </button>
-            </div>
-          </section>
-
-          <!-- STEP 3 -->
-          <section class="step" data-step="3">
-            <button class="stepHead" type="button">
-              <span class="stepNum">3</span>
-              <span class="stepTitle">Освещение</span>
-            </button>
-
-            <div class="stepBody">
-              <div class="card">
-                <div class="field">
-                  <div class="fieldLabel">Модель освещения</div>
-                  <select id="lightsModel">
-                    <option value="none">Без освещения</option>
-                    <option value="top">Свет сверху</option>
-                    <option value="posts4">Освещение на 4 стойках</option>
-                    <option value="variant4">4-й вариант</option>
-                  </select>
-                </div>
-
-                <div class="field">
-                  <div class="fieldLabel">Свет сцены</div>
-                  <select id="lighting">
-                    <option value="studio">Студия</option>
-                    <option value="soft">Мягкий</option>
-                    <option value="contrast">Контрастный</option>
-                  </select>
-                </div>
               </div>
             </div>
           </section>

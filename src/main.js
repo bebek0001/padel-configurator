@@ -43,15 +43,27 @@ const COURT_LABELS = {
   single: 'Single — корт'
 }
 
-const LIGHT_LABELS = {
+const LIGHT_LABELS_DEFAULT = {
   none: 'Без освещения',
   top: 'Свет сверху',
   posts4: 'Освещение на 4 стойках',
   variant4: '4-й вариант'
 }
 
+const LIGHT_LABELS_SOLO = {
+  none: 'Без освещения',
+  solo_1: 'Вариант 1',
+  solo_2: 'Вариант 2',
+  solo_3: 'Вариант 3',
+  solo_4: 'Вариант 4',
+  solo_5: 'Вариант 5',
+  solo_6: 'Вариант 6',
+  solo_7: 'Вариант 7',
+  solo_8: 'Вариант 8'
+}
+
 // lights — оставляем как у тебя в папке, кроме "none": он теперь без GLB
-const LIGHTS_MODEL_URLS = {
+const LIGHTS_MODEL_URLS_DEFAULT = {
   none: [],
 
   top: [
@@ -74,6 +86,27 @@ const LIGHTS_MODEL_URLS = {
     assetUrl('models/lights/4variant.glb'),
     assetUrl('models/lights/Variant4.glb')
   ]
+}
+
+const buildSoloLightCandidates = (variant) => ([
+  assetUrl(`models/lights/solo_${variant}.glb`),
+  assetUrl(`models/lights/solo-${variant}.glb`),
+  assetUrl(`models/lights/solo${variant}.glb`),
+  assetUrl(`models/lights/Solo_${variant}.glb`),
+  assetUrl(`models/lights/Solo-${variant}.glb`),
+  assetUrl(`models/lights/Solo${variant}.glb`)
+])
+
+const LIGHTS_MODEL_URLS_SOLO = {
+  none: [],
+  solo_1: buildSoloLightCandidates(1),
+  solo_2: buildSoloLightCandidates(2),
+  solo_3: buildSoloLightCandidates(3),
+  solo_4: buildSoloLightCandidates(4),
+  solo_5: buildSoloLightCandidates(5),
+  solo_6: buildSoloLightCandidates(6),
+  solo_7: buildSoloLightCandidates(7),
+  solo_8: buildSoloLightCandidates(8)
 }
 
 // красим строго только этот материал
@@ -127,7 +160,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.toneMappingExposure = 1.7
 
 const scene = new THREE.Scene()
-scene.background = new THREE.Color(0x06070a)
+scene.background = new THREE.Color(0x000000)
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500)
 camera.position.set(6, 4, 10)
@@ -150,6 +183,7 @@ scene.add(courtFocusTarget)
 let courtRoot = null
 let lightsRoot = null
 let currentLightsKey = 'none'
+let currentCourtKey = 'base'
 
 let mixerCourt = null
 let mixerLights = null
@@ -354,7 +388,41 @@ function loadGLB(url) {
   })
 }
 
+function isSoloCourt(key) {
+  return key === 'single'
+}
+
+function getLightsModelMap(courtKey) {
+  return isSoloCourt(courtKey) ? LIGHTS_MODEL_URLS_SOLO : LIGHTS_MODEL_URLS_DEFAULT
+}
+
+function getLightsLabelMap(courtKey) {
+  return isSoloCourt(courtKey) ? LIGHT_LABELS_SOLO : LIGHT_LABELS_DEFAULT
+}
+
+function buildLightOptions(labelMap) {
+  return Object.entries(labelMap).map(([value, label]) => ({ value, label }))
+}
+
+function renderLightsModelOptions(courtKey) {
+  if (!lightsModelSelect) return
+  const labelMap = getLightsLabelMap(courtKey)
+  const options = buildLightOptions(labelMap)
+  lightsModelSelect.innerHTML = ''
+  options.forEach(({ value, label }) => {
+    const opt = document.createElement('option')
+    opt.value = value
+    opt.textContent = label
+    lightsModelSelect.appendChild(opt)
+  })
+
+  if (!labelMap[lightsModelSelect.value]) {
+    lightsModelSelect.value = 'none'
+  }
+}
+
 async function loadCourt(key) {
+  currentCourtKey = key
   const candidates = COURT_MODEL_CANDIDATES[key]
   if (!candidates || !candidates.length) return
 
@@ -400,7 +468,7 @@ async function loadLightsModel(key) {
     return
   }
 
-  const candidates = LIGHTS_MODEL_URLS[key]
+  const candidates = getLightsModelMap(currentCourtKey)[key]
   if (!candidates || !candidates.length) {
     setStatus(`Нет путей для освещения "${key}"`)
     return
@@ -424,7 +492,7 @@ async function loadLightsModel(key) {
 
       // важно: после загрузки света ставим его НАД КОРТОМ
       placeLightsOverCourt()
-      const label = LIGHT_LABELS[key] ?? key
+      const label = getLightsLabelMap(currentCourtKey)[key] ?? key
       setStatus(`Освещение загружено: ${label}`)
       return
     } catch (e) {
@@ -458,6 +526,7 @@ function paintStructure(hex) {
 // -----------------------------
 // UI wiring
 // -----------------------------
+
 lightingSelect?.addEventListener('change', (e) => {
   setSceneLightingPreset(e.target.value)
 })
@@ -491,7 +560,11 @@ document.querySelectorAll('.colorBtn').forEach((btn) => {
 
 courtRadios.forEach((r) => {
   r.addEventListener('change', () => {
-    if (r.checked) loadCourt(r.value)
+    if (!r.checked) return
+    const nextCourt = r.value
+    renderLightsModelOptions(nextCourt)
+    loadCourt(nextCourt)
+    loadLightsModel(lightsModelSelect?.value ?? 'none')
   })
 })
 
@@ -499,6 +572,8 @@ courtRadios.forEach((r) => {
 // Init
 // -----------------------------
 setSceneLightingPreset('studio')
+
+renderLightsModelOptions(currentCourtKey)
 
 // старт: корт base + без света
 loadCourt('base')
