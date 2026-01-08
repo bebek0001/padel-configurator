@@ -181,8 +181,32 @@
             </div>
           </section>
 
+          <div class="cta">
+            <button class="ctaButton" type="button" data-modal-open>
+              <span class="ctaIcon">→</span>
+              Рассчитать
+            </button>
+          </div>
         </div>
       </aside>
+    </div>
+
+    <div class="modal" data-modal>
+      <div class="modalBackdrop" data-modal-close></div>
+      <div class="modalDialog" role="dialog" aria-modal="true" aria-labelledby="calcTitle">
+        <button class="modalClose" type="button" data-modal-close aria-label="Закрыть">×</button>
+        <div class="modalLogo">PADELBORN</div>
+        <h2 class="modalTitle" id="calcTitle">Оставьте заявку</h2>
+        <div class="modalFields">
+          <label class="modalField">
+            <input class="modalInput" type="text" name="full_name" placeholder="Имя и фамилия" />
+          </label>
+          <label class="modalField">
+            <input class="modalInput" type="tel" name="phone" placeholder="Номер телефона" />
+          </label>
+        </div>
+        <button class="modalSubmit" type="button">Отправить заявку</button>
+      </div>
     </div>
 
     <script type="module" src="/src/main.js"></script>

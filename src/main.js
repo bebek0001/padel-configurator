@@ -121,6 +121,9 @@ const structureColorInput = document.querySelector('#structureColor')
 const applyStructureColorBtn = document.querySelector('#applyStructureColor')
 const resetStructureColorsBtn = document.querySelector('#resetStructureColors')
 const restoreAllColorsBtn = document.querySelector('#restoreAllColors')
+const modal = document.querySelector('[data-modal]')
+const modalOpenBtn = document.querySelector('[data-modal-open]')
+const modalCloseBtns = document.querySelectorAll('[data-modal-close]')
 
 // UI steps
 document.querySelectorAll('.stepHead').forEach((head) => {
@@ -563,6 +566,23 @@ courtRadios.forEach((r) => {
     loadLightsModel(lightsModelSelect?.value ?? 'none')
   })
 })
+
+const openModal = () => {
+  if (!modal) return
+  modal.classList.add('is-open')
+}
+
+const closeModal = () => {
+  if (!modal) return
+  modal.classList.remove('is-open')
+}
+
+modal?.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeModal()
+})
+
+modalOpenBtn?.addEventListener('click', openModal)
+modalCloseBtns.forEach((btn) => btn.addEventListener('click', closeModal))
 
 // -----------------------------
 // Init
