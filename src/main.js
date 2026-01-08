@@ -110,6 +110,52 @@ const LIGHTS_MODEL_URLS_SOLO = {
 const PAINTABLE_STRUCTURE_MATERIAL_NAME = 'Black'
 
 // -----------------------------
+// Цвета (название + hex) для UI кнопок
+// -----------------------------
+const COLOR_NAME_BY_HEX = {
+  '#000000': 'Чёрный',
+  '#111111': 'Чёрный',
+  '#000': 'Чёрный',
+
+  '#1e5bff': 'Синий',
+  '#0000ff': 'Синий',
+
+  '#00a651': 'Зелёный',
+  '#00ff00': 'Зелёный',
+
+  '#ff3b30': 'Красный',
+  '#ff0000': 'Красный',
+
+  '#ff2d55': 'Розовый',
+  '#ff69b4': 'Розовый',
+
+  '#ffcc00': 'Жёлтый',
+  '#ffff00': 'Жёлтый',
+
+  '#ff9500': 'Оранжевый',
+  '#ffa500': 'Оранжевый',
+
+  '#af52de': 'Фиолетовый',
+  '#8000ff': 'Фиолетовый'
+}
+
+function normalizeHex(hex) {
+  if (!hex) return null
+  const h = String(hex).trim()
+  if (!h) return null
+  // приводим к #rrggbb (если возможно)
+  if (h.startsWith('#') && (h.length === 7 || h.length === 4)) return h.toLowerCase()
+  if (!h.startsWith('#') && (h.length === 6 || h.length === 3)) return `#${h.toLowerCase()}`
+  return h.toLowerCase()
+}
+
+function colorNameFromHex(hex) {
+  const n = normalizeHex(hex)
+  if (!n) return null
+  return COLOR_NAME_BY_HEX[n] || null
+}
+
+// -----------------------------
 // DOM
 // -----------------------------
 const canvas = document.querySelector('#canvas')
@@ -200,6 +246,7 @@ let currentCourtKey = 'base'
 
 // выбранный цвет светового оборудования (стойки/каркас)
 let currentLightsColor = null
+let currentLightsColorName = null
 
 let mixerCourt = null
 let mixerLights = null
@@ -496,7 +543,7 @@ async function loadLightsModel(key) {
       placeLightsOverCourt()
 
       // применяем выбранный цвет столбов/каркаса
-      if (currentLightsColor) paintLightsStructure(currentLightsColor)
+      if (currentLightsColor) paintLightsStructure(currentLightsColor, currentLightsColorName)
 
       const label = getLightsLabelMap(currentCourtKey)[key] ?? key
       setStatus(`Освещение загружено: ${label}`)
@@ -510,9 +557,6 @@ async function loadLightsModel(key) {
   setStatus(`Ошибка: не удалось загрузить освещение "${key}". Проверь public/models/lights`)
 }
 
-// --------- ВАЖНОЕ ИСПРАВЛЕНИЕ ---------
-// 1) цвет корта: красим только материал Black у корта (+ при желании у света оставляем без изменений)
-// 2) цвет освещения: красим только материал Black у модели освещения (стойки/каркас)
 function paintMaterialByName(root, materialName, hex) {
   if (!root) return false
   let painted = false
@@ -533,18 +577,19 @@ function paintMaterialByName(root, materialName, hex) {
   return painted
 }
 
-// цвет конструкции корта (как раньше)
+// цвет конструкции корта
 function paintStructure(hex) {
   paintMaterialByName(courtRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, hex)
 }
 
-// цвет освещения — ТОЧНО как у базы (Black)
-function paintLightsStructure(hex) {
-  currentLightsColor = hex
+// цвет освещения — стойки/каркас
+function paintLightsStructure(hex, nameFromBtn = null) {
+  const normalized = normalizeHex(hex)
+  currentLightsColor = normalized || hex
+  currentLightsColorName = nameFromBtn || colorNameFromHex(normalized) || null
 
-  const ok = paintMaterialByName(lightsRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, hex)
+  const ok = paintMaterialByName(lightsRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, currentLightsColor)
 
-  // если вдруг в модели освещения материал называется не Black — покажем подсказку в консоль
   if (!ok && lightsRoot) {
     const names = new Set()
     lightsRoot.traverse((o) => {
@@ -590,11 +635,12 @@ document.querySelectorAll('.colorBtn').forEach((btn) => {
   })
 })
 
-// кнопки выбора цвета освещения (у тебя уже есть .lightsColorBtn)
+// кнопки выбора цвета освещения
 document.querySelectorAll('.lightsColorBtn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const c = btn.getAttribute('data-lcolor')
-    if (c) paintLightsStructure(c)
+    const name = btn.textContent?.trim() || null
+    if (c) paintLightsStructure(c, name)
   })
 })
 
@@ -680,6 +726,7 @@ async function sendLead() {
       sceneLighting: getSceneLighting(),
       structureColor: getStructureColorValue(),
       lightsColor: currentLightsColor,
+      lightsColorName: currentLightsColorName,
       extras: getExtras()
     }
   }
