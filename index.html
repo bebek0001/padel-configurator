@@ -10,6 +10,11 @@
       <div class="viewer">
         <canvas id="canvas"></canvas>
 
+        <!-- Back to main menu (Step 1) -->
+        <button class="backBtn" id="backToMain" type="button" aria-label="Назад">
+          ← Назад
+        </button>
+
         <div class="hud">
           <div class="hudTitle">3D просмотр</div>
           <div class="hudText">
@@ -90,6 +95,21 @@
                     <option value="soft">Мягкий</option>
                     <option value="contrast">Контрастный</option>
                   </select>
+                </div>
+
+                <!-- Lighting color (like court colors) -->
+                <div class="lightsColorBlock">
+                  <div class="lightsColorTitle">Цвет освещения</div>
+                  <div class="lightsColorsGrid">
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#1f6fff" type="button">Синий</button>
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#111111" type="button">Черный</button>
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#2dbb4f" type="button">Зеленый</button>
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#e83c3c" type="button">Красный</button>
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#ff4bb5" type="button">Розовый</button>
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#f5c400" type="button">Желтый</button>
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#ff7a00" type="button">Оранжевый</button>
+                    <button class="colorBtn lightsColorBtn" data-lcolor="#8a4dff" type="button">Фиолетовый</button>
+                  </div>
                 </div>
               </div>
 

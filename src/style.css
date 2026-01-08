@@ -39,6 +39,31 @@ body{
   min-width:0;
 }
 
+/* Back button */
+.backBtn{
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 60;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  height: 44px;
+  padding: 0 14px;
+
+  border: 1px solid var(--stroke);
+  border-radius: 999px;
+  background: rgba(12,16,24,.75);
+  color: var(--text);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  font-weight: 700;
+}
+.backBtn:hover{ transform: translateY(-1px); }
+
 #canvas{
   width:100%;
   height:100%;
@@ -47,7 +72,7 @@ body{
 
 .hud{
   position:absolute;
-  top:18px;
+  top:74px;
   left:18px;
   width:320px;
   background:rgba(12,16,24,.75);
@@ -234,6 +259,22 @@ body{
   grid-template-columns: 1fr 1fr;
   gap:10px;
   margin-bottom:12px;
+}
+
+/* Lights color block (Step 2) */
+.lightsColorBlock{
+  margin-top: 14px;
+}
+.lightsColorTitle{
+  font-size:12px;
+  color:var(--panel-text);
+  margin-bottom:10px;
+  font-weight:700;
+}
+.lightsColorsGrid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
 }
 
 .colorBtn{
