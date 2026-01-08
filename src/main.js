@@ -609,3 +609,158 @@ function tick() {
   requestAnimationFrame(tick)
 }
 tick()
+// -------------------------------------------------------
+// LEAD → SERVER → TELEGRAM (ТОЛЬКО ЭТОТ БЛОК ДОБАВЛЕН)
+// НИЧЕГО В 3D/СВЕТЕ/КАМЕРЕ НЕ ТРОГАЕМ
+// -------------------------------------------------------
+
+const LEADS_ENDPOINT = (import.meta?.env?.VITE_LEADS_ENDPOINT || '').trim()
+
+// Поля модалки
+const leadNameInput = document.querySelector('input[name="full_name"]')
+const leadPhoneInput = document.querySelector('input[name="phone"]')
+const leadSubmitBtn = document.querySelector('.modalSubmit')
+
+// Отслеживаем последний выбранный цвет конструкции, НЕ вмешиваясь в 3D.
+// Это нужно только чтобы отправить корректный цвет в заявку.
+// null = "Вернуть исходные цвета"
+let leadStructureColor = null
+
+// Ловим клики по цветовым кнопкам (те, где data-color)
+document.querySelectorAll('.colorBtn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const c = btn.getAttribute('data-color')
+    if (c) leadStructureColor = c
+  }, { capture: true })
+})
+
+// Ловим “Применить” (цвет из color input)
+applyStructureColorBtn?.addEventListener('click', () => {
+  const hex = structureColorInput?.value
+  if (hex) leadStructureColor = hex
+}, { capture: true })
+
+// Ловим “Сбросить” (в твоём UI это #111111)
+resetStructureColorsBtn?.addEventListener('click', () => {
+  leadStructureColor = '#111111'
+}, { capture: true })
+
+// Ловим “Вернуть исходные цвета”
+restoreAllColorsBtn?.addEventListener('click', () => {
+  leadStructureColor = null
+}, { capture: true })
+
+function getSelectedCourtForLead() {
+  const el = document.querySelector('input[name="court"]:checked')
+  const key = el?.value || currentCourtKey || 'base'
+  return { id: key, label: COURT_LABELS?.[key] ?? key }
+}
+
+function getSelectedLightsModelForLead() {
+  const key = String(lightsModelSelect?.value ?? currentLightsKey ?? 'none')
+  const map = getLightsLabelMap?.(currentCourtKey)
+  const label = (map && key in map) ? map[key] : key
+  return { id: key, label }
+}
+
+function getSelectedSceneLightingForLead() {
+  const id = String(lightingSelect?.value ?? 'studio')
+  const opt = lightingSelect?.querySelector(`option[value="${CSS.escape(id)}"]`)
+  const label = opt?.textContent?.trim() || id
+  return { id, label }
+}
+
+function getExtrasForLead() {
+  const checked = Array.from(document.querySelectorAll('input[name="extra_options"]:checked'))
+  return checked.map((el) => {
+    const id = String(el.value || '').trim()
+    const label = el.closest('label')?.querySelector('.optionLabel')?.textContent?.trim() || id
+    return { id, label }
+  })
+}
+
+function buildLeadPayload() {
+  return {
+    createdAt: new Date().toISOString(),
+    pageUrl: window.location.href,
+    contact: {
+      fullName: leadNameInput?.value?.trim() || '',
+      phone: leadPhoneInput?.value?.trim() || ''
+    },
+    config: {
+      court: getSelectedCourtForLead(),
+      lightsModel: getSelectedLightsModelForLead(),
+      sceneLighting: getSelectedSceneLightingForLead(),
+      structureColor: leadStructureColor, // null = исходные
+      extras: getExtrasForLead()
+    }
+  }
+}
+
+async function sendLead(payload) {
+  if (!LEADS_ENDPOINT) {
+    console.log('LEAD PAYLOAD (VITE_LEADS_ENDPOINT не задан):', payload)
+    throw new Error('VITE_LEADS_ENDPOINT is not set')
+  }
+
+  // чтобы “Отправка…” не висела бесконечно
+  const controller = new AbortController()
+  const t = setTimeout(() => controller.abort(), 8000)
+
+  try {
+    const res = await fetch(LEADS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    })
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`Lead send failed: ${res.status} ${text}`)
+    }
+
+    return await res.json().catch(() => ({}))
+  } catch (e) {
+    if (e?.name === 'AbortError') throw new Error('Timeout: сервер не ответил за 8 секунд')
+    throw e
+  } finally {
+    clearTimeout(t)
+  }
+}
+
+leadSubmitBtn?.addEventListener('click', async () => {
+  const payload = buildLeadPayload()
+
+  if (!payload.contact.fullName || payload.contact.fullName.length < 2) {
+    alert('Введите имя и фамилию')
+    return
+  }
+  if (!payload.contact.phone || payload.contact.phone.length < 6) {
+    alert('Введите номер телефона')
+    return
+  }
+
+  const prevText = leadSubmitBtn.textContent
+  leadSubmitBtn.disabled = true
+  leadSubmitBtn.textContent = 'Отправка...'
+
+  try {
+    await sendLead(payload)
+    leadSubmitBtn.textContent = 'Отправлено'
+    setStatus?.('Заявка отправлена')
+
+    setTimeout(() => {
+      closeModal?.()
+      leadSubmitBtn.disabled = false
+      leadSubmitBtn.textContent = prevText
+      if (leadNameInput) leadNameInput.value = ''
+      if (leadPhoneInput) leadPhoneInput.value = ''
+    }, 700)
+  } catch (e) {
+    console.error(e)
+    alert('Ошибка отправки. Проверь VITE_LEADS_ENDPOINT и сервер.')
+    leadSubmitBtn.disabled = false
+    leadSubmitBtn.textContent = prevText
+  }
+})
