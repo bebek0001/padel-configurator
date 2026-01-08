@@ -191,18 +191,32 @@ body{
   width:100%;
   margin-top:12px;
   border:0;
-  background:transparent;
-  color:var(--label-accent);
-  padding:10px 12px;
-  border-radius:12px;
+  background: var(--label-accent);
+  color:#121212;
+  font-weight:700;
+  font-size:15px;
+  letter-spacing:.04em;
+  padding:12px 32px;
+  border-radius:999px;
   cursor:pointer;
-  display:flex;
+  display:inline-flex;
   align-items:center;
   justify-content:center;
-  gap:8px;
+  gap:12px;
+  box-shadow:0 12px 0 #b8e118, 0 18px 34px rgba(0,0,0,.18);
 }
-.next:hover{ background:rgba(214,255,58,.18); }
-.chev{ font-size:18px; line-height:1; }
+.next:hover{ background:#dff85d; }
+.chev{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:#111111;
+  color:var(--label-accent);
+  display:grid;
+  place-items:center;
+  font-size:18px;
+  line-height:1;
+}
 
 .hint{
   margin-top:10px;

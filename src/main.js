@@ -341,7 +341,7 @@ function setSceneLightingPreset(preset) {
   add(rim)
 }
 
-function fitCameraToObject(obj, offset = 1.35) {
+function fitCameraToObject(obj, offset = 1.2) {
   if (!obj) return
   const box = new THREE.Box3().setFromObject(obj)
   const size = box.getSize(new THREE.Vector3())
@@ -443,7 +443,7 @@ async function loadCourt(key) {
       }
 
       // после загрузки корта подгоняем камеру и переставляем свет
-      fitCameraToObject(courtRoot, 1.35)
+      fitCameraToObject(courtRoot, 1.2)
       placeLightsOverCourt()
 
       const label = COURT_LABELS[key] ?? key
@@ -535,7 +535,7 @@ lightsModelSelect?.addEventListener('change', (e) => {
 })
 
 reframeBtn?.addEventListener('click', () => {
-  fitCameraToObject(courtRoot, 1.35)
+  fitCameraToObject(courtRoot, 1.2)
 })
 
 applyStructureColorBtn?.addEventListener('click', () => {
