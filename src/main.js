@@ -11,6 +11,11 @@ const BASE_URL = import.meta.env.BASE_URL || '/'
 const assetUrl = (p) => `${BASE_URL}${String(p).replace(/^\/+/, '')}`
 
 // -----------------------------
+// LEADS ENDPOINT (Cloudflare Worker)
+// -----------------------------
+const LEADS_ENDPOINT = import.meta.env.VITE_LEADS_ENDPOINT || ''
+
+// -----------------------------
 // SETTINGS
 // -----------------------------
 const LIGHTS_Y_LIFT_DEFAULT = 0.0
@@ -101,6 +106,7 @@ const LIGHTS_MODEL_URLS_SOLO = {
   solo_8: buildSoloLightCandidates(8)
 }
 
+// красим строго этот материал (как у базы корта)
 const PAINTABLE_STRUCTURE_MATERIAL_NAME = 'Black'
 
 // -----------------------------
@@ -121,8 +127,10 @@ const modal = document.querySelector('[data-modal]')
 const modalOpenBtn = document.querySelector('[data-modal-open]')
 const modalCloseBtns = document.querySelectorAll('[data-modal-close]')
 const modalSubmitBtn = document.querySelector('.modalSubmit')
-const nameInput = document.querySelector('input[name="full_name"]')
+const fullNameInput = document.querySelector('input[name="full_name"]')
 const phoneInput = document.querySelector('input[name="phone"]')
+
+const backToMainBtn = document.querySelector('#backToMain')
 
 // UI steps
 document.querySelectorAll('.stepHead').forEach((head) => {
@@ -133,24 +141,32 @@ document.querySelectorAll('.stepHead').forEach((head) => {
   })
 })
 
+function goToStep(stepNumber) {
+  const target = document.querySelector(`.step[data-step="${stepNumber}"]`)
+  if (!target) return
+  document.querySelectorAll('.step').forEach((s) => s.classList.remove('is-open'))
+  target.classList.add('is-open')
+  target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+backToMainBtn?.addEventListener('click', () => {
+  goToStep(1)
+})
+
 document.querySelectorAll('[data-next]').forEach((btn) => {
   btn.addEventListener('click', () => {
     const next = btn.getAttribute('data-next')
-    const target = document.querySelector(`.step[data-step="${next}"]`)
-    if (!target) return
-    document.querySelectorAll('.step').forEach((s) => s.classList.remove('is-open'))
-    target.classList.add('is-open')
-    target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    goToStep(next)
   })
 })
 
+// Радио корта
 const courtRadios = document.querySelectorAll('input[name="court"]')
 
 // -----------------------------
 // THREE
 // -----------------------------
-// ✅ FIX black screenshot: preserveDrawingBuffer: true
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true })
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -181,7 +197,9 @@ let courtRoot = null
 let lightsRoot = null
 let currentLightsKey = 'none'
 let currentCourtKey = 'base'
-let currentStructureColor = '#111111'
+
+// выбранный цвет светового оборудования (стойки/каркас)
+let currentLightsColor = null
 
 let mixerCourt = null
 let mixerLights = null
@@ -192,6 +210,7 @@ function setStatus(text) {
   if (statusEl) statusEl.textContent = text || ''
 }
 
+// grid
 const grid = new THREE.GridHelper(40, 40, 0x223044, 0x141c28)
 grid.position.y = 0
 grid.material.opacity = 0.35
@@ -255,9 +274,11 @@ function improveMaterials(root) {
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
     mats.forEach((m) => {
       if (!m) return
+
       if (!originalMaterialColors.has(m.uuid) && m.color) {
         originalMaterialColors.set(m.uuid, m.color.clone())
       }
+
       if ('metalness' in m) m.metalness = Math.min(m.metalness ?? 0, 1)
       if ('roughness' in m) m.roughness = m.roughness ?? 0.8
       m.needsUpdate = true
@@ -266,7 +287,6 @@ function improveMaterials(root) {
 }
 
 function restoreOriginalColors() {
-  currentStructureColor = null
   const restore = (root) => {
     if (!root) return
     root.traverse((obj) => {
@@ -298,24 +318,13 @@ function setSceneLightingPreset(preset) {
     scene.add(light)
   }
 
-  const createSpot = (position, intensity, angle = Math.PI / 5, color = 0xf6e3b4) => {
-    const spot = new THREE.SpotLight(color, intensity, 60, angle, 0.45)
-    spot.position.set(...position)
-    spot.target = courtFocusTarget
-    spot.castShadow = true
-    spot.shadow.mapSize.set(2048, 2048)
-    return spot
-  }
+  add(new THREE.AmbientLight(0xf8fbff, preset === 'contrast' ? 0.38 : 0.55))
 
-  const ambientIntensity = preset === 'contrast' ? 0.38 : 0.55
   const keyIntensity = preset === 'soft' ? 0.95 : 1.2
   const fillIntensity = preset === 'contrast' ? 0.45 : 0.35
 
-  add(new THREE.AmbientLight(0xf8fbff, ambientIntensity))
-
   const key = new THREE.DirectionalLight(0xffffff, keyIntensity)
   key.position.set(7, 10, 5)
-  key.castShadow = true
   add(key)
 
   const fill = new THREE.DirectionalLight(0xc8d8ff, fillIntensity)
@@ -326,19 +335,27 @@ function setSceneLightingPreset(preset) {
   back.position.set(0, 7, -4)
   add(back)
 
-  add(createSpot([0, 8, 1], preset === 'contrast' ? 2.1 : 1.8))
-  add(createSpot([-6, 5.5, 5], 1.35, Math.PI / 6, 0xf9dd9e))
+  const spot1 = new THREE.SpotLight(0xf6e3b4, preset === 'contrast' ? 2.1 : 1.8, 60, Math.PI / 5, 0.45)
+  spot1.position.set(0, 8, 1)
+  spot1.target = courtFocusTarget
+  add(spot1)
+
+  const spot2 = new THREE.SpotLight(0xf9dd9e, 1.35, 60, Math.PI / 6, 0.45)
+  spot2.position.set(-6, 5.5, 5)
+  spot2.target = courtFocusTarget
+  add(spot2)
 
   const rim = new THREE.PointLight(0x78a9ff, 0.55, 20)
   rim.position.set(4, 3, -5)
   add(rim)
 }
 
-function fitCameraToObject(obj, offset = 1.35) {
+function fitCameraToObject(obj, offset = 1.2) {
   if (!obj) return
   const box = new THREE.Box3().setFromObject(obj)
   const size = box.getSize(new THREE.Vector3())
   const center = box.getCenter(new THREE.Vector3())
+
   courtFocusTarget.position.copy(center)
 
   const maxSize = Math.max(size.x, size.y, size.z)
@@ -354,7 +371,6 @@ function fitCameraToObject(obj, offset = 1.35) {
 
 function placeLightsOverCourt() {
   if (!courtRoot || !lightsRoot) return
-
   const courtBox = new THREE.Box3().setFromObject(courtRoot)
   const courtCenter = courtBox.getCenter(new THREE.Vector3())
 
@@ -403,6 +419,7 @@ function renderLightsModelOptions(courtKey) {
     opt.textContent = label
     lightsModelSelect.appendChild(opt)
   })
+
   if (!labelMap[lightsModelSelect.value]) {
     lightsModelSelect.value = 'none'
   }
@@ -430,7 +447,7 @@ async function loadCourt(key) {
         gltf.animations.forEach((clip) => mixerCourt.clipAction(clip).play())
       }
 
-      fitCameraToObject(courtRoot, 1.35)
+      fitCameraToObject(courtRoot, 1.2)
       placeLightsOverCourt()
 
       const label = COURT_LABELS[key] ?? key
@@ -477,6 +494,10 @@ async function loadLightsModel(key) {
       }
 
       placeLightsOverCourt()
+
+      // применяем выбранный цвет столбов/каркаса
+      if (currentLightsColor) paintLightsStructure(currentLightsColor)
+
       const label = getLightsLabelMap(currentCourtKey)[key] ?? key
       setStatus(`Освещение загружено: ${label}`)
       return
@@ -489,24 +510,50 @@ async function loadLightsModel(key) {
   setStatus(`Ошибка: не удалось загрузить освещение "${key}". Проверь public/models/lights`)
 }
 
-function paintStructure(hex) {
-  currentStructureColor = String(hex || '').toLowerCase()
-  const applyTo = (root) => {
-    if (!root) return
-    root.traverse((obj) => {
-      if (!obj.isMesh) return
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
-      mats.forEach((m) => {
-        if (!m || !m.name || !m.color) return
-        if (m.name === PAINTABLE_STRUCTURE_MATERIAL_NAME) {
-          m.color.set(hex)
-          m.needsUpdate = true
-        }
-      })
+// --------- ВАЖНОЕ ИСПРАВЛЕНИЕ ---------
+// 1) цвет корта: красим только материал Black у корта (+ при желании у света оставляем без изменений)
+// 2) цвет освещения: красим только материал Black у модели освещения (стойки/каркас)
+function paintMaterialByName(root, materialName, hex) {
+  if (!root) return false
+  let painted = false
+
+  root.traverse((obj) => {
+    if (!obj.isMesh) return
+    const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
+    mats.forEach((m) => {
+      if (!m || !m.color) return
+      if (m.name === materialName) {
+        m.color.set(hex)
+        m.needsUpdate = true
+        painted = true
+      }
     })
+  })
+
+  return painted
+}
+
+// цвет конструкции корта (как раньше)
+function paintStructure(hex) {
+  paintMaterialByName(courtRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, hex)
+}
+
+// цвет освещения — ТОЧНО как у базы (Black)
+function paintLightsStructure(hex) {
+  currentLightsColor = hex
+
+  const ok = paintMaterialByName(lightsRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, hex)
+
+  // если вдруг в модели освещения материал называется не Black — покажем подсказку в консоль
+  if (!ok && lightsRoot) {
+    const names = new Set()
+    lightsRoot.traverse((o) => {
+      if (!o.isMesh) return
+      const mats = Array.isArray(o.material) ? o.material : [o.material]
+      mats.forEach((m) => m?.name && names.add(m.name))
+    })
+    console.warn('[Lights] Не найден материал "Black". Материалы в lights model:', [...names])
   }
-  applyTo(courtRoot)
-  applyTo(lightsRoot)
 }
 
 // -----------------------------
@@ -521,7 +568,7 @@ lightsModelSelect?.addEventListener('change', (e) => {
 })
 
 reframeBtn?.addEventListener('click', () => {
-  fitCameraToObject(courtRoot, 1.35)
+  fitCameraToObject(courtRoot, 1.2)
 })
 
 applyStructureColorBtn?.addEventListener('click', () => {
@@ -543,6 +590,14 @@ document.querySelectorAll('.colorBtn').forEach((btn) => {
   })
 })
 
+// кнопки выбора цвета освещения (у тебя уже есть .lightsColorBtn)
+document.querySelectorAll('.lightsColorBtn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const c = btn.getAttribute('data-lcolor')
+    if (c) paintLightsStructure(c)
+  })
+})
+
 courtRadios.forEach((r) => {
   r.addEventListener('change', () => {
     if (!r.checked) return
@@ -553,141 +608,120 @@ courtRadios.forEach((r) => {
   })
 })
 
-const openModal = () => {
-  if (!modal) return
-  modal.classList.add('is-open')
-}
-const closeModal = () => {
-  if (!modal) return
-  modal.classList.remove('is-open')
-}
+// -----------------------------
+// Modal
+// -----------------------------
+const openModal = () => modal?.classList.add('is-open')
+const closeModal = () => modal?.classList.remove('is-open')
+
+modalOpenBtn?.addEventListener('click', openModal)
+modalCloseBtns.forEach((btn) => btn.addEventListener('click', closeModal))
 
 modal?.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeModal()
 })
 
-modalOpenBtn?.addEventListener('click', openModal)
-modalCloseBtns.forEach((btn) => btn.addEventListener('click', closeModal))
-
 // -----------------------------
-// Lead submit (конфиг + контакты + скрин)
+// Lead payload сбор
 // -----------------------------
-const SCENE_LIGHT_LABELS = {
-  studio: 'Студия',
-  soft: 'Мягкий',
-  contrast: 'Контрастный'
+function getSelectedCourt() {
+  const checked = document.querySelector('input[name="court"]:checked')
+  const id = checked?.value || currentCourtKey || 'base'
+  return { id, label: COURT_LABELS[id] || id }
 }
 
-function getCheckedExtras() {
-  return Array.from(document.querySelectorAll('input[name="extra_options"]:checked')).map((el) => {
-    const row = el.closest('label')
-    const label = row?.querySelector('.optionLabel')?.textContent?.trim() || el.value
-    return { id: el.value, label }
-  })
+function getSelectedLightsModel() {
+  const id = lightsModelSelect?.value || currentLightsKey || 'none'
+  const labelMap = getLightsLabelMap(currentCourtKey)
+  return { id, label: labelMap[id] || id }
 }
 
-function buildLeadPayload() {
-  const courtId = currentCourtKey
-  const courtLabel = COURT_LABELS[courtId] ?? courtId
+function getSceneLighting() {
+  const id = lightingSelect?.value || 'studio'
+  const label =
+    id === 'studio' ? 'Студия' :
+    id === 'soft' ? 'Мягкий' :
+    id === 'contrast' ? 'Контрастный' : id
 
-  const lightsId = lightsModelSelect?.value ?? 'none'
-  const lightsLabel = (getLightsLabelMap(currentCourtKey)[lightsId] ?? lightsId)
+  return { id, label }
+}
 
-  const sceneLightId = lightingSelect?.value ?? 'studio'
-  const sceneLightLabel = SCENE_LIGHT_LABELS[sceneLightId] ?? sceneLightId
+function getExtras() {
+  const boxes = Array.from(document.querySelectorAll('input[name="extra_options"]:checked'))
+  return boxes.map((b) => ({ id: b.value, label: b.closest('label')?.innerText?.trim() || b.value }))
+}
 
-  return {
-    createdAt: new Date().toISOString(),
-    pageUrl: location.href,
+function getStructureColorValue() {
+  const v = structureColorInput?.value
+  return v || null
+}
+
+async function sendLead() {
+  if (!LEADS_ENDPOINT) {
+    throw new Error('VITE_LEADS_ENDPOINT не задан')
+  }
+
+  const fullName = (fullNameInput?.value || '').trim()
+  const phone = (phoneInput?.value || '').trim()
+
+  if (!fullName || !phone) {
+    throw new Error('Заполни имя и телефон')
+  }
+
+  const payload = {
+    pageUrl: window.location.href,
     contact: {
-      fullName: (nameInput?.value ?? '').trim(),
-      phone: (phoneInput?.value ?? '').trim()
+      fullName,
+      phone
     },
     config: {
-      court: { id: courtId, label: courtLabel },
-      lightsModel: { id: lightsId, label: lightsLabel },
-      sceneLighting: { id: sceneLightId, label: sceneLightLabel },
-      structureColor: currentStructureColor,
-      extras: getCheckedExtras()
+      court: getSelectedCourt(),
+      lightsModel: getSelectedLightsModel(),
+      sceneLighting: getSceneLighting(),
+      structureColor: getStructureColorValue(),
+      lightsColor: currentLightsColor,
+      extras: getExtras()
     }
   }
-}
 
-// ✅ FIX black screenshot: принудительный рендер + RAF + preserveDrawingBuffer
-async function captureCanvasScreenshotBase64() {
-  try {
-    const c = canvas || document.querySelector('#canvas') || document.querySelector('canvas')
-    if (!c) return null
-
-    // гарантируем кадр
-    renderer.render(scene, camera)
-    await new Promise((r) => requestAnimationFrame(() => r()))
-
-    return c.toDataURL('image/jpeg', 0.88)
-  } catch (e) {
-    console.warn('Не удалось снять скриншот canvas:', e)
-    return null
-  }
-}
-
-async function sendLead(payload) {
-  const endpoint = import.meta.env.VITE_LEADS_ENDPOINT
-  if (!endpoint) {
-    console.warn('VITE_LEADS_ENDPOINT не задан. Payload:', payload)
-    alert('Не настроен адрес отправки заявки (VITE_LEADS_ENDPOINT).')
-    return false
-  }
-
-  const shot = await captureCanvasScreenshotBase64()
-  if (shot) payload.screenshotBase64 = shot
-
-  const res = await fetch(endpoint, {
+  const res = await fetch(LEADS_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   })
 
   if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(`HTTP ${res.status}: ${text}`)
+    const t = await res.text().catch(() => '')
+    throw new Error(`Ошибка сервера (${res.status}): ${t || 'нет текста'}`)
   }
-  return true
+
+  return res.json().catch(() => ({}))
 }
 
 modalSubmitBtn?.addEventListener('click', async () => {
-  const payload = buildLeadPayload()
+  const btn = modalSubmitBtn
+  if (!btn) return
 
-  if (!payload.contact.fullName) {
-    nameInput?.focus()
-    alert('Введите имя и фамилию')
-    return
-  }
-  if (!payload.contact.phone) {
-    phoneInput?.focus()
-    alert('Введите номер телефона')
-    return
-  }
-
+  const prevText = btn.textContent
   try {
-    if (modalSubmitBtn) {
-      modalSubmitBtn.disabled = true
-      modalSubmitBtn.textContent = 'Отправляем…'
-    }
+    btn.disabled = true
+    btn.textContent = 'Отправка...'
 
-    await sendLead(payload)
+    await sendLead()
 
-    alert('Заявка отправлена')
-    if (nameInput) nameInput.value = ''
-    if (phoneInput) phoneInput.value = ''
-    closeModal()
+    btn.textContent = 'Отправлено ✓'
+    setTimeout(() => {
+      closeModal()
+      btn.textContent = prevText || 'Отправить заявку'
+      btn.disabled = false
+      if (fullNameInput) fullNameInput.value = ''
+      if (phoneInput) phoneInput.value = ''
+    }, 800)
   } catch (e) {
     console.error(e)
-    alert('Не удалось отправить заявку. Проверьте настройку endpoint и CORS.')
-  } finally {
-    if (modalSubmitBtn) {
-      modalSubmitBtn.disabled = false
-      modalSubmitBtn.textContent = 'Отправить заявку'
-    }
+    alert('Ошибка отправки. Проверь VITE_LEADS_ENDPOINT и сервер.')
+    btn.textContent = prevText || 'Отправить заявку'
+    btn.disabled = false
   }
 })
 
@@ -696,6 +730,7 @@ modalSubmitBtn?.addEventListener('click', async () => {
 // -----------------------------
 setSceneLightingPreset('studio')
 renderLightsModelOptions(currentCourtKey)
+
 loadCourt('base')
 loadLightsModel('none')
 
@@ -709,7 +744,6 @@ function tick() {
 
   controls.update()
   renderer.render(scene, camera)
-
   requestAnimationFrame(tick)
 }
 tick()
