@@ -505,7 +505,7 @@ async function loadCourt(key) {
         gltf.animations.forEach((clip) => mixerCourt.clipAction(clip).play())
       }
 
-      fitCameraToObject(courtRoot, 1.2)
+      fitCameraToObject(courtRoot, 1.0)
       placeLightsOverCourt()
 
       const label = COURT_LABELS[key] ?? key
