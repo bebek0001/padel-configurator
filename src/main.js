@@ -21,6 +21,7 @@ const LEADS_ENDPOINT = import.meta.env.VITE_LEADS_ENDPOINT || ''
 const LIGHTS_Y_LIFT_DEFAULT = 0.0
 const LIGHTS_Y_LIFT_BY_KEY = {}
 
+// ВАЖНО: пути под модели — как у тебя в public/models/...
 const COURT_MODEL_CANDIDATES = {
   base: [assetUrl('models/courts/base.glb')],
   base_panoramic: [assetUrl('models/courts/base_panoramic.glb')],
@@ -106,7 +107,7 @@ const LIGHTS_MODEL_URLS_SOLO = {
   solo_8: buildSoloLightCandidates(8)
 }
 
-// красим строго этот материал (как у базы корта)
+// Красим строго этот материал (как у базы корта)
 const PAINTABLE_STRUCTURE_MATERIAL_NAME = 'Black'
 
 // -----------------------------
@@ -136,6 +137,7 @@ const COLOR_NAME_BY_HEX = {
   '#ffa500': 'Оранжевый',
 
   '#af52de': 'Фиолетовый',
+  '#8a4dff': 'Фиолетовый',
   '#8000ff': 'Фиолетовый'
 }
 
@@ -143,7 +145,6 @@ function normalizeHex(hex) {
   if (!hex) return null
   const h = String(hex).trim()
   if (!h) return null
-  // приводим к #rrggbb (если возможно)
   if (h.startsWith('#') && (h.length === 7 || h.length === 4)) return h.toLowerCase()
   if (!h.startsWith('#') && (h.length === 6 || h.length === 3)) return `#${h.toLowerCase()}`
   return h.toLowerCase()
@@ -212,7 +213,11 @@ const courtRadios = document.querySelectorAll('input[name="court"]')
 // -----------------------------
 // THREE
 // -----------------------------
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  preserveDrawingBuffer: true, // <- критично для скриншота (иначе часто "чёрный скрин")
+})
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.outputColorSpace = THREE.SRGBColorSpace
 renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -244,7 +249,7 @@ let lightsRoot = null
 let currentLightsKey = 'none'
 let currentCourtKey = 'base'
 
-// выбранный цвет светового оборудования (стойки/каркас)
+// выбранные цвета
 let currentLightsColor = null
 let currentLightsColorName = null
 
@@ -382,7 +387,13 @@ function setSceneLightingPreset(preset) {
   back.position.set(0, 7, -4)
   add(back)
 
-  const spot1 = new THREE.SpotLight(0xf6e3b4, preset === 'contrast' ? 2.1 : 1.8, 60, Math.PI / 5, 0.45)
+  const spot1 = new THREE.SpotLight(
+    0xf6e3b4,
+    preset === 'contrast' ? 2.1 : 1.8,
+    60,
+    Math.PI / 5,
+    0.45
+  )
   spot1.position.set(0, 8, 1)
   spot1.target = courtFocusTarget
   add(spot1)
@@ -542,7 +553,6 @@ async function loadLightsModel(key) {
 
       placeLightsOverCourt()
 
-      // применяем выбранный цвет столбов/каркаса
       if (currentLightsColor) paintLightsStructure(currentLightsColor, currentLightsColorName)
 
       const label = getLightsLabelMap(currentCourtKey)[key] ?? key
@@ -577,12 +587,10 @@ function paintMaterialByName(root, materialName, hex) {
   return painted
 }
 
-// цвет конструкции корта
 function paintStructure(hex) {
   paintMaterialByName(courtRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, hex)
 }
 
-// цвет освещения — стойки/каркас
 function paintLightsStructure(hex, nameFromBtn = null) {
   const normalized = normalizeHex(hex)
   currentLightsColor = normalized || hex
@@ -599,6 +607,31 @@ function paintLightsStructure(hex, nameFromBtn = null) {
     })
     console.warn('[Lights] Не найден материал "Black". Материалы в lights model:', [...names])
   }
+}
+
+// -----------------------------
+// Скриншот 3D canvas -> dataURL jpeg
+// -----------------------------
+function takeScreenshotDataUrl(maxWidth = 1280, quality = 0.82) {
+  // Чтобы картинка была актуальной — один раз отрендерим прямо сейчас
+  renderer.render(scene, camera)
+
+  const src = renderer.domElement
+  const w = src.width
+  const h = src.height
+
+  const scale = Math.min(1, maxWidth / w)
+  const outW = Math.round(w * scale)
+  const outH = Math.round(h * scale)
+
+  const c = document.createElement('canvas')
+  c.width = outW
+  c.height = outH
+  const ctx = c.getContext('2d')
+
+  ctx.drawImage(src, 0, 0, outW, outH)
+
+  return c.toDataURL('image/jpeg', quality)
 }
 
 // -----------------------------
@@ -631,11 +664,13 @@ restoreAllColorsBtn?.addEventListener('click', () => {
 document.querySelectorAll('.colorBtn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const c = btn.getAttribute('data-color')
-    if (c) paintStructure(c)
+    if (c) {
+      structureColorInput.value = c
+      paintStructure(c)
+    }
   })
 })
 
-// кнопки выбора цвета освещения
 document.querySelectorAll('.lightsColorBtn').forEach((btn) => {
   btn.addEventListener('click', () => {
     const c = btn.getAttribute('data-lcolor')
@@ -688,7 +723,6 @@ function getSceneLighting() {
     id === 'studio' ? 'Студия' :
     id === 'soft' ? 'Мягкий' :
     id === 'contrast' ? 'Контрастный' : id
-
   return { id, label }
 }
 
@@ -702,33 +736,41 @@ function getStructureColorValue() {
   return v || null
 }
 
+function getStructureColorName() {
+  const hex = normalizeHex(getStructureColorValue())
+  return colorNameFromHex(hex) || (hex ? 'Свой цвет' : null)
+}
+
 async function sendLead() {
-  if (!LEADS_ENDPOINT) {
-    throw new Error('VITE_LEADS_ENDPOINT не задан')
-  }
+  if (!LEADS_ENDPOINT) throw new Error('VITE_LEADS_ENDPOINT не задан')
 
   const fullName = (fullNameInput?.value || '').trim()
   const phone = (phoneInput?.value || '').trim()
+  if (!fullName || !phone) throw new Error('Заполни имя и телефон')
 
-  if (!fullName || !phone) {
-    throw new Error('Заполни имя и телефон')
-  }
+  const structureColorHex = normalizeHex(getStructureColorValue())
+  const structureColorName = getStructureColorName()
+
+  // ✅ Скриншот с 3D
+  const screenshotDataUrl = takeScreenshotDataUrl(960, 0.75)
 
   const payload = {
     pageUrl: window.location.href,
-    contact: {
-      fullName,
-      phone
-    },
+    contact: { fullName, phone },
     config: {
       court: getSelectedCourt(),
       lightsModel: getSelectedLightsModel(),
       sceneLighting: getSceneLighting(),
-      structureColor: getStructureColorValue(),
+
+      structureColor: structureColorHex,
+      structureColorName,
+
       lightsColor: currentLightsColor,
       lightsColorName: currentLightsColorName,
+
       extras: getExtras()
-    }
+    },
+    screenshotDataUrl
   }
 
   const res = await fetch(LEADS_ENDPOINT, {
@@ -788,7 +830,6 @@ function tick() {
   const dt = clock.getDelta()
   if (mixerCourt) mixerCourt.update(dt)
   if (mixerLights) mixerLights.update(dt)
-
   controls.update()
   renderer.render(scene, camera)
   requestAnimationFrame(tick)
