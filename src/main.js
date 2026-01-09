@@ -107,6 +107,25 @@ const LIGHTS_MODEL_URLS_SOLO = {
   solo_8: buildSoloLightCandidates(8)
 }
 
+// -----------------------------
+// GOALS (ворота) — 2 варианта из public/models/extras
+// duo — для base / base_panoramic / ultra_panoramic
+// solo — только для single
+// Файлы:
+// public/models/extras/vorota_duo.glb
+// public/models/extras/vorota_solo.glb
+// -----------------------------
+const GOALS_Y_LIFT_DEFAULT = 0.0
+
+const GOALS_MODEL_CANDIDATES = {
+  duo: [assetUrl('models/extras/vorota_duo.glb')],
+  solo: [assetUrl('models/extras/vorota_solo.glb')]
+}
+
+function getGoalsCandidates(courtKey) {
+  return isSoloCourt(courtKey) ? GOALS_MODEL_CANDIDATES.solo : GOALS_MODEL_CANDIDATES.duo
+}
+
 // Красим строго этот материал (как у базы корта)
 const PAINTABLE_STRUCTURE_MATERIAL_NAME = 'Black'
 
@@ -178,6 +197,7 @@ const fullNameInput = document.querySelector('input[name="full_name"]')
 const phoneInput = document.querySelector('input[name="phone"]')
 
 const backToMainBtn = document.querySelector('#backToMain')
+const goalsCheckbox = document.querySelector('input[name="extra_options"][value="goals"]')
 
 // UI steps
 document.querySelectorAll('.stepHead').forEach((head) => {
@@ -246,6 +266,7 @@ scene.add(courtFocusTarget)
 
 let courtRoot = null
 let lightsRoot = null
+let goalsRoot = null
 let currentLightsKey = 'none'
 let currentCourtKey = 'base'
 
@@ -255,6 +276,7 @@ let currentLightsColorName = null
 
 let mixerCourt = null
 let mixerLights = null
+let mixerGoals = null
 
 const originalMaterialColors = new Map()
 
@@ -317,6 +339,15 @@ function clearLightsModel() {
   disposeRoot(lightsRoot)
   lightsRoot = null
   mixerLights = null
+}
+
+function clearGoalsModel() {
+  if (!goalsRoot) return
+  forgetMaterialColors(goalsRoot)
+  world.remove(goalsRoot)
+  disposeRoot(goalsRoot)
+  goalsRoot = null
+  mixerGoals = null
 }
 
 function improveMaterials(root) {
@@ -444,6 +475,23 @@ function placeLightsOverCourt() {
   lightsRoot.position.y = lift
 }
 
+function placeGoalsOnCourt() {
+  if (!courtRoot || !goalsRoot) return
+
+  const courtBox = new THREE.Box3().setFromObject(courtRoot)
+  const courtCenter = courtBox.getCenter(new THREE.Vector3())
+
+  const goalsBox = new THREE.Box3().setFromObject(goalsRoot)
+  const goalsCenter = goalsBox.getCenter(new THREE.Vector3())
+
+  const dx = courtCenter.x - goalsCenter.x
+  const dz = courtCenter.z - goalsCenter.z
+
+  goalsRoot.position.x += dx
+  goalsRoot.position.z += dz
+  goalsRoot.position.y = GOALS_Y_LIFT_DEFAULT
+}
+
 function loadGLB(url) {
   return new Promise((resolve, reject) => {
     loader.load(url, resolve, undefined, reject)
@@ -567,6 +615,49 @@ async function loadLightsModel(key) {
   setStatus(`Ошибка: не удалось загрузить освещение "${key}". Проверь public/models/lights`)
 }
 
+async function loadGoalsModel(courtKey) {
+  // Ворота включаются только по чекбоксу
+  if (!goalsCheckbox?.checked) {
+    clearGoalsModel()
+    return
+  }
+
+  clearGoalsModel()
+
+  const candidates = getGoalsCandidates(courtKey)
+  if (!candidates || !candidates.length) {
+    setStatus('Нет путей для ворот')
+    return
+  }
+
+  setStatus('Загрузка ворот...')
+
+  let lastErr = null
+  for (const url of candidates) {
+    try {
+      const gltf = await loadGLB(url)
+      goalsRoot = gltf.scene
+      improveMaterials(goalsRoot)
+      world.add(goalsRoot)
+
+      mixerGoals = null
+      if (gltf.animations && gltf.animations.length) {
+        mixerGoals = new THREE.AnimationMixer(goalsRoot)
+        gltf.animations.forEach((clip) => mixerGoals.clipAction(clip).play())
+      }
+
+      placeGoalsOnCourt()
+      setStatus(`Корт: ${COURT_LABELS[currentCourtKey] || currentCourtKey} • Ворота: включены`)
+      return
+    } catch (e) {
+      lastErr = e
+    }
+  }
+
+  console.error(lastErr)
+  setStatus('Ошибка: не удалось загрузить ворота. Проверь public/models/extras')
+}
+
 function paintMaterialByName(root, materialName, hex) {
   if (!root) return false
   let painted = false
@@ -686,6 +777,7 @@ courtRadios.forEach((r) => {
     renderLightsModelOptions(nextCourt)
     loadCourt(nextCourt)
     loadLightsModel(lightsModelSelect?.value ?? 'none')
+    loadGoalsModel(nextCourt)
   })
 })
 
@@ -697,6 +789,12 @@ const closeModal = () => modal?.classList.remove('is-open')
 
 modalOpenBtn?.addEventListener('click', openModal)
 modalCloseBtns.forEach((btn) => btn.addEventListener('click', closeModal))
+goalsCheckbox?.addEventListener('change', () => {
+  loadGoalsModel(currentCourtKey)
+})
+fitCameraToObject(courtRoot, 1.0)
+placeLightsOverCourt()
+placeGoalsOnCourt()
 
 modal?.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeModal()
@@ -822,7 +920,7 @@ renderLightsModelOptions(currentCourtKey)
 
 loadCourt('base')
 loadLightsModel('none')
-
+loadGoalsModel('base')
 // -----------------------------
 // Render loop
 // -----------------------------
@@ -830,6 +928,7 @@ function tick() {
   const dt = clock.getDelta()
   if (mixerCourt) mixerCourt.update(dt)
   if (mixerLights) mixerLights.update(dt)
+  if (mixerGoals) mixerGoals.update(dt)
   controls.update()
   renderer.render(scene, camera)
   requestAnimationFrame(tick)
