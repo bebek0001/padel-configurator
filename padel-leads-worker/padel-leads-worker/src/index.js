@@ -1,213 +1,266 @@
-const ALLOWED_ORIGINS = new Set([
-  "https://nikolayvorob89-dot.github.io",
-]);
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Padel Configurator</title>
+  </head>
+  <body>
+    <div class="app">
+      <div class="hero">
+        <div class="heroInner">
+          <div class="heroTitle">PADELBORN</div>
+          <div class="heroSub">Конфигуратор корта</div>
 
-function isAllowedOrigin(origin) {
-  if (!origin) return false;
-  if (origin.startsWith("http://localhost:")) return true;
-  if (origin.startsWith("http://127.0.0.1:")) return true;
-  return ALLOWED_ORIGINS.has(origin);
-}
+          <button id="backToMain" class="backBtn" type="button" aria-label="Назад в главное меню">
+            ← Назад
+          </button>
 
-function corsHeaders(origin) {
-  if (isAllowedOrigin(origin)) {
-    return {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "POST,GET,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      "Access-Control-Max-Age": "86400",
-      "Vary": "Origin",
-    };
-  }
-  return {};
-}
+          <div class="heroActions">
+            <button class="ctaBtn" data-modal-open type="button">
+              Рассчитать
+              <span class="ctaIcon">→</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-function safe(v, fallback = "—") {
-  if (v === undefined || v === null) return fallback;
-  const s = String(v).trim();
-  return s ? s : fallback;
-}
+      <main class="content">
+        <section class="panel">
+          <div class="panelTitle">Настройка</div>
 
-function formatColor(name, hex) {
-  const n = (name && String(name).trim()) ? String(name).trim() : "";
-  const h = (hex && String(hex).trim()) ? String(hex).trim() : "";
-  if (n && h) return `${n} (${h})`;
-  if (n) return n;
-  if (h) return h;
-  return "—";
-}
+          <!-- STEP 1 -->
+          <div class="step is-open" data-step="1">
+            <div class="stepHead">
+              <div class="stepNum">1</div>
+              <div class="stepTitle">Варианты кортов</div>
+            </div>
 
-function parseDataUrl(dataUrl) {
-  // data:image/jpeg;base64,xxxx
-  if (!dataUrl || typeof dataUrl !== "string") return null;
-  if (!dataUrl.startsWith("data:image/")) return null;
+            <div class="stepBody">
+              <div class="card">
+                <div class="radioRow">
+                  <label class="radioLabel">
+                    <input type="radio" name="court" value="base" checked />
+                    <span>Классический корт</span>
+                  </label>
+                </div>
 
-  const comma = dataUrl.indexOf(",");
-  if (comma === -1) return null;
+                <div class="radioRow">
+                  <label class="radioLabel">
+                    <input type="radio" name="court" value="base_panoramic" />
+                    <span>Панорамный корт</span>
+                  </label>
+                </div>
 
-  const meta = dataUrl.slice(5, comma); // "image/jpeg;base64"
-  const base64 = dataUrl.slice(comma + 1);
+                <div class="radioRow">
+                  <label class="radioLabel">
+                    <input type="radio" name="court" value="ultra_panoramic" />
+                    <span>Ультра-панорамный корт</span>
+                  </label>
+                </div>
 
-  const mime = meta.split(";")[0] || "image/jpeg";
-  if (!meta.includes("base64")) return null;
+                <div class="radioRow">
+                  <label class="radioLabel">
+                    <input type="radio" name="court" value="single" />
+                    <span>Single — корт</span>
+                  </label>
+                </div>
+              </div>
 
-  return { mime, base64 };
-}
+              <button class="nextBtn" data-next="2" type="button">
+                Далее <span class="nextIcon">›</span>
+              </button>
+            </div>
+          </div>
 
-function base64ToBytes(base64) {
-  const bin = atob(base64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
-}
+          <!-- STEP 2 -->
+          <div class="step" data-step="2">
+            <div class="stepHead">
+              <div class="stepNum">2</div>
+              <div class="stepTitle">Освещение</div>
+            </div>
 
-async function tgSendMessage(env, text) {
-  const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: env.TELEGRAM_CHAT_ID,
-      text,
-    }),
-  });
-  return r.json();
-}
+            <div class="stepBody">
+              <div class="card">
+                <div class="field">
+                  <div class="fieldLabel">Модель освещения</div>
+                  <select id="lightsModel" class="select">
+                    <option value="none">Без освещения</option>
+                    <option value="padel_1">Вариант 1</option>
+                    <option value="padel_2">Вариант 2</option>
+                    <option value="padel_3">Вариант 3</option>
+                    <option value="padel_4">Вариант 4</option>
+                    <option value="padel_5">Вариант 5</option>
+                    <option value="padel_6">Вариант 6</option>
+                    <option value="padel_7">Вариант 7</option>
+                    <option value="padel_8">Вариант 8</option>
+                  </select>
+                </div>
 
-async function tgSendPhoto(env, { bytes, mime, caption }) {
-  const ext = mime.includes("png") ? "png" : "jpg";
-  const fileName = `padel.${ext}`;
+                <div class="field">
+                  <div class="fieldLabel">Свет сцены</div>
+                  <select id="lighting" class="select">
+                    <option value="studio" selected>Студия</option>
+                    <option value="soft">Мягкий</option>
+                    <option value="contrast">Контрастный</option>
+                  </select>
+                </div>
 
-  const form = new FormData();
-  form.append("chat_id", env.TELEGRAM_CHAT_ID);
+                <div class="lightsColorCard">
+                  <div class="lightsColorTitle">Цвет освещения</div>
+                  <div class="lightsColorGrid">
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#1e5bff">Синий</button>
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#111111">Чёрный</button>
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#00a651">Зелёный</button>
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#ff3b30">Красный</button>
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#ff2d55">Розовый</button>
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#ffcc00">Жёлтый</button>
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#ff9500">Оранжевый</button>
+                    <button type="button" class="colorBtn lightsColorBtn" data-lcolor="#8a4dff">Фиолетовый</button>
+                  </div>
+                </div>
+              </div>
 
-  // ВАЖНО: caption <= 1024
-  if (caption) form.append("caption", caption.slice(0, 1000));
+              <button class="nextBtn" data-next="3" type="button">
+                Далее <span class="nextIcon">›</span>
+              </button>
+            </div>
+          </div>
 
-  form.append("photo", new Blob([bytes], { type: mime }), fileName);
+          <!-- STEP 3 -->
+          <div class="step" data-step="3">
+            <div class="stepHead">
+              <div class="stepNum">3</div>
+              <div class="stepTitle">Цвет конструкции</div>
+            </div>
 
-  const r = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-    method: "POST",
-    body: form,
-  });
+            <div class="stepBody">
+              <div class="card">
+                <div class="colorsTitle">Базовые цвета</div>
+                <div class="colorsGrid">
+                  <button type="button" class="colorBtn" data-color="#1e5bff">Синий</button>
+                  <button type="button" class="colorBtn" data-color="#111111">Чёрный</button>
+                  <button type="button" class="colorBtn" data-color="#00a651">Зелёный</button>
+                  <button type="button" class="colorBtn" data-color="#ff3b30">Красный</button>
+                  <button type="button" class="colorBtn" data-color="#ff2d55">Розовый</button>
+                  <button type="button" class="colorBtn" data-color="#ffcc00">Жёлтый</button>
+                  <button type="button" class="colorBtn" data-color="#ff9500">Оранжевый</button>
+                  <button type="button" class="colorBtn" data-color="#8a4dff">Фиолетовый</button>
+                </div>
 
-  return r.json();
-}
+                <div class="customColorRow">
+                  <div class="customColorLabel">Свой цвет</div>
+                  <input id="structureColor" type="color" value="#111111" class="colorInput" />
+                  <button id="applyStructureColor" type="button" class="miniBtn">Применить</button>
+                  <button id="resetStructureColors" type="button" class="miniBtn secondary">Сбросить</button>
+                </div>
 
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    const origin = request.headers.get("Origin") || "";
+                <div class="row">
+                  <button id="restoreAllColors" type="button" class="miniBtn secondary">Восстановить все</button>
+                </div>
+              </div>
 
-    // preflight
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    }
+              <button class="nextBtn" data-next="4" type="button">
+                Далее <span class="nextIcon">›</span>
+              </button>
+            </div>
+          </div>
 
-    // healthcheck
-    if (url.pathname === "/api/lead" && request.method === "GET") {
-      return new Response("OK", {
-        status: 200,
-        headers: { ...corsHeaders(origin), "Content-Type": "text/plain" },
-      });
-    }
+          <!-- STEP 4 -->
+          <div class="step" data-step="4">
+            <div class="stepHead">
+              <div class="stepNum">4</div>
+              <div class="stepTitle">Дополнительные опции</div>
+            </div>
 
-    // only POST /api/lead
-    if (url.pathname !== "/api/lead" || request.method !== "POST") {
-      return new Response("Not found", { status: 404 });
-    }
+            <div class="stepBody">
+              <div class="card">
+                <div class="colorsTitle">Опции</div>
 
-    if (!isAllowedOrigin(origin)) {
-      return new Response("Forbidden", { status: 403 });
-    }
+                <label class="checkRow">
+                  <input type="checkbox" name="extra_options" value="canopy" />
+                  <span>Навес для падел корта</span>
+                </label>
 
-    let payload;
-    try {
-      payload = await request.json();
-    } catch {
-      return new Response("Bad JSON", { status: 400, headers: corsHeaders(origin) });
-    }
+                <label class="checkRow">
+                  <input type="checkbox" name="extra_options" value="goals" />
+                  <span>Ворота для падел корта</span>
+                </label>
 
-    const extras =
-      (payload?.config?.extras || []).map((x) => `• ${x.label || x.id}`).join("\n") || "—";
+                <label class="checkRow">
+                  <input type="checkbox" name="extra_options" value="mobiles" />
+                  <span>Мобильные основания для падел корта</span>
+                </label>
 
-    const structureColorText = formatColor(
-      payload?.config?.structureColorName,
-      payload?.config?.structureColor
-    );
+                <label class="checkRow">
+                  <input type="checkbox" name="extra_options" value="protectors" />
+                  <span>Мягкая защита (протекторы) для корта</span>
+                </label>
 
-    const lightsColorText = formatColor(
-      payload?.config?.lightsColorName,
-      payload?.config?.lightsColor
-    );
+                <!-- Панель выбора цвета протекторов (появляется только при включенном чекбоксе protectors) -->
+                <div id="protectorsColorsPanel" class="card lightsColorCard" style="display:none; margin-top:12px;">
+                  <div class="lightsColorTitle">Цвет протекторов</div>
+                  <div class="lightsColorGrid">
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#1e5bff">Синий</button>
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#111111">Чёрный</button>
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#00a651">Зелёный</button>
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#ff3b30">Красный</button>
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#ff2d55">Розовый</button>
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#ffcc00">Жёлтый</button>
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#ff9500">Оранжевый</button>
+                    <button type="button" class="colorBtn protectorsColorBtn" data-pcolor="#8a4dff">Фиолетовый</button>
+                  </div>
+                </div>
 
-    const fullMsg =
-`🟢 НОВАЯ ЗАЯВКА PADEL
+                <label class="checkRow">
+                  <input type="checkbox" name="extra_options" value="grass" />
+                  <span>Искусственная трава для падел корта</span>
+                </label>
 
-👤 Имя: ${safe(payload?.contact?.fullName)}
-📞 Телефон: ${safe(payload?.contact?.phone)}
+                <label class="checkRow">
+                  <input type="checkbox" name="extra_options" value="accessories" />
+                  <span>Аксесуары для игры и тренировок</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
 
-🏟 Корт: ${safe(payload?.config?.court?.label || payload?.config?.court?.id)}
-💡 Освещение: ${safe(payload?.config?.lightsModel?.label || payload?.config?.lightsModel?.id)}
-🌤 Свет сцены: ${safe(payload?.config?.sceneLighting?.label || payload?.config?.sceneLighting?.id)}
-🎨 Цвет конструкции: ${structureColorText}
-🚦 Цвет стоек освещения: ${lightsColorText}
+        <section class="viewer">
+          <div class="viewerHead">
+            <div class="viewerTitle">3D просмотр</div>
+            <div class="viewerHint">ЛКМ — вращение, ПКМ — сдвиг, колесо — зум</div>
+            <div id="status" class="viewerStatus"></div>
+            <button id="reframe" class="miniBtn secondary" type="button">Фрейм</button>
+          </div>
 
-➕ Опции:
-${extras}
+          <div class="canvasWrap">
+            <canvas id="canvas"></canvas>
+          </div>
+        </section>
+      </main>
+    </div>
 
-🌐 ${safe(payload?.pageUrl)}
-🕒 ${new Date().toLocaleString("ru-RU")}`;
+    <!-- MODAL -->
+    <div class="modal" data-modal tabindex="-1">
+      <div class="modalCard">
+        <button class="modalClose" data-modal-close type="button">✕</button>
+        <div class="modalTitle">Оставьте заявку</div>
 
-    // Короткая подпись к фото (чтобы никогда не превысить лимит)
-    const shortCaption =
-`🟢 НОВАЯ ЗАЯВКА PADEL
-👤 ${safe(payload?.contact?.fullName)} | 📞 ${safe(payload?.contact?.phone)}
-🏟 ${safe(payload?.config?.court?.label || payload?.config?.court?.id)}
-🌐 ${safe(payload?.pageUrl)}`.slice(0, 900);
+        <div class="modalForm">
+          <input class="modalInput" type="text" name="full_name" placeholder="Имя" />
+          <input class="modalInput" type="tel" name="phone" placeholder="Телефон" />
+        </div>
 
-    const screenshotDataUrl = payload?.screenshotDataUrl;
-    const parsed = parseDataUrl(screenshotDataUrl);
+        <button class="ctaBtn modalSubmit" type="button">
+          Отправить
+          <span class="ctaIcon">→</span>
+        </button>
+      </div>
 
-    let photoResult = null;
-    let messageResult = null;
+      <div class="modalBackdrop" data-modal-close></div>
+    </div>
 
-    // 1) Пытаемся отправить фото
-    if (parsed) {
-      try {
-        const bytes = base64ToBytes(parsed.base64);
-
-        // если вдруг огромный
-        if (bytes.length > 8 * 1024 * 1024) {
-          // фото слишком тяжёлое — пропустим фото и отправим только текст
-          photoResult = { ok: false, description: "Screenshot too large" };
-        } else {
-          photoResult = await tgSendPhoto(env, {
-            bytes,
-            mime: parsed.mime,
-            caption: shortCaption,
-          });
-        }
-      } catch (e) {
-        photoResult = { ok: false, description: String(e) };
-      }
-    }
-
-    // 2) Всегда отправляем полное сообщение отдельным текстом
-    // (так ты всегда получишь все детали, даже если фото не ушло)
-    try {
-      messageResult = await tgSendMessage(env, fullMsg);
-    } catch (e) {
-      messageResult = { ok: false, description: String(e) };
-    }
-
-    return new Response(JSON.stringify({
-      ok: true,
-      mode: photoResult?.ok ? "photo+text" : "text_only",
-      photo: photoResult,
-      message: messageResult,
-    }), {
-      status: 200,
-      headers: { ...corsHeaders(origin), "Content-Type": "application/json" },
-    });
-  },
-};
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

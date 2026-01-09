@@ -108,26 +108,38 @@ const LIGHTS_MODEL_URLS_SOLO = {
 }
 
 // -----------------------------
-// GOALS (ворота) — 2 варианта из public/models/extras
-// duo — для base / base_panoramic / ultra_panoramic
-// solo — только для single
-// Файлы:
-// public/models/extras/vorota_duo.glb
-// public/models/extras/vorota_solo.glb
+// EXTRAS 3D MODELS (public/models/extras)
+// - Ворота: vorota_duo / vorota_solo
+// - Инвентарь: inventar (универсальный)
+// - Протекторы: protector_duo / protector_solo
 // -----------------------------
-const GOALS_Y_LIFT_DEFAULT = 0.0
+const EXTRAS_Y_LIFT_DEFAULT = 0.0
 
 const GOALS_MODEL_CANDIDATES = {
-  duo: [assetUrl('models/extras/vorota_duo.glb')],
-  solo: [assetUrl('models/extras/vorota_solo.glb')]
+  duo: [
+    assetUrl('models/extras/vorota_duo.glb'),
+    assetUrl('models/vorota_duo.glb')
+  ],
+  solo: [
+    assetUrl('models/extras/vorota_solo.glb'),
+    assetUrl('models/vorota_solo.glb')
+  ]
 }
-const INVENTORY_Y_LIFT_DEFAULT = 0.0
 
-const INVENTORY_MODEL_CANDIDATES = [
-  assetUrl('models/extras/inventar.glb')
+const INVENTAR_MODEL_CANDIDATES = [
+  assetUrl('models/extras/inventar.glb'),
+  assetUrl('models/inventar.glb')
 ]
-function getGoalsCandidates(courtKey) {
-  return isSoloCourt(courtKey) ? GOALS_MODEL_CANDIDATES.solo : GOALS_MODEL_CANDIDATES.duo
+
+const PROTECTORS_MODEL_CANDIDATES = {
+  duo: [
+    assetUrl('models/extras/protector_duo.glb'),
+    assetUrl('models/protector_duo.glb')
+  ],
+  solo: [
+    assetUrl('models/extras/protector_solo.glb'),
+    assetUrl('models/protector_solo.glb')
+  ]
 }
 
 // Красим строго этот материал (как у базы корта)
@@ -201,8 +213,14 @@ const fullNameInput = document.querySelector('input[name="full_name"]')
 const phoneInput = document.querySelector('input[name="phone"]')
 
 const backToMainBtn = document.querySelector('#backToMain')
+
+// extras checkboxes
 const goalsCheckbox = document.querySelector('input[name="extra_options"][value="goals"]')
-const inventoryCheckbox = document.querySelector('input[name="extra_options"][value="accessories"]')
+const accessoriesCheckbox = document.querySelector('input[name="extra_options"][value="accessories"]')
+const protectorsCheckbox = document.querySelector('input[name="extra_options"][value="protectors"]')
+
+// panel colors for protectors
+const protectorsColorPanel = document.querySelector('#protectorsColorsPanel')
 
 // UI steps
 document.querySelectorAll('.stepHead').forEach((head) => {
@@ -272,7 +290,9 @@ scene.add(courtFocusTarget)
 let courtRoot = null
 let lightsRoot = null
 let goalsRoot = null
-let inventoryRoot = null
+let inventarRoot = null
+let protectorsRoot = null
+
 let currentLightsKey = 'none'
 let currentCourtKey = 'base'
 
@@ -280,10 +300,14 @@ let currentCourtKey = 'base'
 let currentLightsColor = null
 let currentLightsColorName = null
 
+let currentProtectorsColor = null
+let currentProtectorsColorName = null
+
 let mixerCourt = null
 let mixerLights = null
 let mixerGoals = null
-let mixerInventory = null
+let mixerInventar = null
+let mixerProtectors = null
 
 const originalMaterialColors = new Map()
 
@@ -356,13 +380,23 @@ function clearGoalsModel() {
   goalsRoot = null
   mixerGoals = null
 }
-function clearInventoryModel() {
-  if (!inventoryRoot) return
-  forgetMaterialColors(inventoryRoot)
-  world.remove(inventoryRoot)
-  disposeRoot(inventoryRoot)
-  inventoryRoot = null
-  mixerInventory = null
+
+function clearInventarModel() {
+  if (!inventarRoot) return
+  forgetMaterialColors(inventarRoot)
+  world.remove(inventarRoot)
+  disposeRoot(inventarRoot)
+  inventarRoot = null
+  mixerInventar = null
+}
+
+function clearProtectorsModel() {
+  if (!protectorsRoot) return
+  forgetMaterialColors(protectorsRoot)
+  world.remove(protectorsRoot)
+  disposeRoot(protectorsRoot)
+  protectorsRoot = null
+  mixerProtectors = null
 }
 
 function improveMaterials(root) {
@@ -402,6 +436,9 @@ function restoreOriginalColors() {
   }
   restore(courtRoot)
   restore(lightsRoot)
+  restore(goalsRoot)
+  restore(inventarRoot)
+  restore(protectorsRoot)
 }
 
 function setSceneLightingPreset(preset) {
@@ -490,39 +527,23 @@ function placeLightsOverCourt() {
   lightsRoot.position.y = lift
 }
 
-function placeGoalsOnCourt() {
-  if (!courtRoot || !goalsRoot) return
+function placeExtraOnCourt(extraRoot) {
+  if (!courtRoot || !extraRoot) return
 
   const courtBox = new THREE.Box3().setFromObject(courtRoot)
   const courtCenter = courtBox.getCenter(new THREE.Vector3())
 
-  const goalsBox = new THREE.Box3().setFromObject(goalsRoot)
-  const goalsCenter = goalsBox.getCenter(new THREE.Vector3())
+  const extraBox = new THREE.Box3().setFromObject(extraRoot)
+  const extraCenter = extraBox.getCenter(new THREE.Vector3())
 
-  const dx = courtCenter.x - goalsCenter.x
-  const dz = courtCenter.z - goalsCenter.z
+  const dx = courtCenter.x - extraCenter.x
+  const dz = courtCenter.z - extraCenter.z
 
-  goalsRoot.position.x += dx
-  goalsRoot.position.z += dz
-  goalsRoot.position.y = GOALS_Y_LIFT_DEFAULT
+  extraRoot.position.x += dx
+  extraRoot.position.z += dz
+  extraRoot.position.y = EXTRAS_Y_LIFT_DEFAULT
 }
 
-function placeInventoryOnCourt() {
-  if (!courtRoot || !inventoryRoot) return
-
-  const courtBox = new THREE.Box3().setFromObject(courtRoot)
-  const courtCenter = courtBox.getCenter(new THREE.Vector3())
-
-  const invBox = new THREE.Box3().setFromObject(inventoryRoot)
-  const invCenter = invBox.getCenter(new THREE.Vector3())
-
-  const dx = courtCenter.x - invCenter.x
-  const dz = courtCenter.z - invCenter.z
-
-  inventoryRoot.position.x += dx
-  inventoryRoot.position.z += dz
-  inventoryRoot.position.y = INVENTORY_Y_LIFT_DEFAULT
-}
 function loadGLB(url) {
   return new Promise((resolve, reject) => {
     loader.load(url, resolve, undefined, reject)
@@ -539,6 +560,14 @@ function getLightsModelMap(courtKey) {
 
 function getLightsLabelMap(courtKey) {
   return isSoloCourt(courtKey) ? LIGHT_LABELS_SOLO : LIGHT_LABELS_DEFAULT
+}
+
+function getGoalsCandidates(courtKey) {
+  return isSoloCourt(courtKey) ? GOALS_MODEL_CANDIDATES.solo : GOALS_MODEL_CANDIDATES.duo
+}
+
+function getProtectorsCandidates(courtKey) {
+  return isSoloCourt(courtKey) ? PROTECTORS_MODEL_CANDIDATES.solo : PROTECTORS_MODEL_CANDIDATES.duo
 }
 
 function buildLightOptions(labelMap) {
@@ -586,6 +615,9 @@ async function loadCourt(key) {
 
       fitCameraToObject(courtRoot, 1.0)
       placeLightsOverCourt()
+      placeExtraOnCourt(goalsRoot)
+      placeExtraOnCourt(inventarRoot)
+      placeExtraOnCourt(protectorsRoot)
 
       const label = COURT_LABELS[key] ?? key
       setStatus(`Корт загружен: ${label}`)
@@ -647,22 +679,15 @@ async function loadLightsModel(key) {
 }
 
 async function loadGoalsModel(courtKey) {
-  // Ворота включаются только по чекбоксу
   if (!goalsCheckbox?.checked) {
     clearGoalsModel()
     return
   }
 
   clearGoalsModel()
-
   const candidates = getGoalsCandidates(courtKey)
-  if (!candidates || !candidates.length) {
-    setStatus('Нет путей для ворот')
-    return
-  }
 
   setStatus('Загрузка ворот...')
-
   let lastErr = null
   for (const url of candidates) {
     try {
@@ -677,8 +702,8 @@ async function loadGoalsModel(courtKey) {
         gltf.animations.forEach((clip) => mixerGoals.clipAction(clip).play())
       }
 
-      placeGoalsOnCourt()
-      setStatus(`Корт: ${COURT_LABELS[currentCourtKey] || currentCourtKey} • Ворота: включены`)
+      placeExtraOnCourt(goalsRoot)
+      setStatus('Ворота загружены')
       return
     } catch (e) {
       lastErr = e
@@ -688,38 +713,31 @@ async function loadGoalsModel(courtKey) {
   console.error(lastErr)
   setStatus('Ошибка: не удалось загрузить ворота. Проверь public/models/extras')
 }
-async function loadInventoryModel() {
-  // Инвентарь включается только по чекбоксу аксессуаров
-  if (!inventoryCheckbox?.checked) {
-    clearInventoryModel()
+
+async function loadInventarModel() {
+  if (!accessoriesCheckbox?.checked) {
+    clearInventarModel()
     return
   }
 
-  clearInventoryModel()
-
-  const candidates = INVENTORY_MODEL_CANDIDATES
-  if (!candidates || !candidates.length) {
-    setStatus('Нет путей для инвентаря')
-    return
-  }
-
+  clearInventarModel()
   setStatus('Загрузка инвентаря...')
 
   let lastErr = null
-  for (const url of candidates) {
+  for (const url of INVENTAR_MODEL_CANDIDATES) {
     try {
       const gltf = await loadGLB(url)
-      inventoryRoot = gltf.scene
-      improveMaterials(inventoryRoot)
-      world.add(inventoryRoot)
+      inventarRoot = gltf.scene
+      improveMaterials(inventarRoot)
+      world.add(inventarRoot)
 
-      mixerInventory = null
+      mixerInventar = null
       if (gltf.animations && gltf.animations.length) {
-        mixerInventory = new THREE.AnimationMixer(inventoryRoot)
-        gltf.animations.forEach((clip) => mixerInventory.clipAction(clip).play())
+        mixerInventar = new THREE.AnimationMixer(inventarRoot)
+        gltf.animations.forEach((clip) => mixerInventar.clipAction(clip).play())
       }
 
-      placeInventoryOnCourt()
+      placeExtraOnCourt(inventarRoot)
       setStatus('Инвентарь загружен')
       return
     } catch (e) {
@@ -728,7 +746,45 @@ async function loadInventoryModel() {
   }
 
   console.error(lastErr)
-  setStatus('Ошибка: не удалось загрузить инвентарь. Проверь public/models/extras/inventar.glb')
+  setStatus('Ошибка: не удалось загрузить инвентарь. Проверь public/models/extras')
+}
+
+async function loadProtectorsModel(courtKey) {
+  if (!protectorsCheckbox?.checked) {
+    clearProtectorsModel()
+    return
+  }
+
+  clearProtectorsModel()
+  const candidates = getProtectorsCandidates(courtKey)
+
+  setStatus('Загрузка протекторов...')
+  let lastErr = null
+  for (const url of candidates) {
+    try {
+      const gltf = await loadGLB(url)
+      protectorsRoot = gltf.scene
+      improveMaterials(protectorsRoot)
+      world.add(protectorsRoot)
+
+      mixerProtectors = null
+      if (gltf.animations && gltf.animations.length) {
+        mixerProtectors = new THREE.AnimationMixer(protectorsRoot)
+        gltf.animations.forEach((clip) => mixerProtectors.clipAction(clip).play())
+      }
+
+      placeExtraOnCourt(protectorsRoot)
+      if (currentProtectorsColor) paintProtectors(currentProtectorsColor, currentProtectorsColorName)
+
+      setStatus('Протекторы загружены')
+      return
+    } catch (e) {
+      lastErr = e
+    }
+  }
+
+  console.error(lastErr)
+  setStatus('Ошибка: не удалось загрузить протекторы. Проверь public/models/extras')
 }
 
 function paintMaterialByName(root, materialName, hex) {
@@ -760,17 +816,15 @@ function paintLightsStructure(hex, nameFromBtn = null) {
   currentLightsColor = normalized || hex
   currentLightsColorName = nameFromBtn || colorNameFromHex(normalized) || null
 
-  const ok = paintMaterialByName(lightsRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, currentLightsColor)
+  paintMaterialByName(lightsRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, currentLightsColor)
+}
 
-  if (!ok && lightsRoot) {
-    const names = new Set()
-    lightsRoot.traverse((o) => {
-      if (!o.isMesh) return
-      const mats = Array.isArray(o.material) ? o.material : [o.material]
-      mats.forEach((m) => m?.name && names.add(m.name))
-    })
-    console.warn('[Lights] Не найден материал "Black". Материалы в lights model:', [...names])
-  }
+function paintProtectors(hex, nameFromBtn = null) {
+  const normalized = normalizeHex(hex)
+  currentProtectorsColor = normalized || hex
+  currentProtectorsColorName = nameFromBtn || colorNameFromHex(normalized) || null
+
+  paintMaterialByName(protectorsRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, currentProtectorsColor)
 }
 
 // -----------------------------
@@ -843,6 +897,20 @@ document.querySelectorAll('.lightsColorBtn').forEach((btn) => {
   })
 })
 
+// protectors colors buttons
+document.querySelectorAll('.protectorsColorBtn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const c = btn.getAttribute('data-pcolor')
+    const name = btn.textContent?.trim() || null
+    if (c) paintProtectors(c, name)
+  })
+})
+
+function toggleProtectorsPanel() {
+  if (!protectorsColorPanel) return
+  protectorsColorPanel.style.display = protectorsCheckbox?.checked ? 'block' : 'none'
+}
+
 courtRadios.forEach((r) => {
   r.addEventListener('change', () => {
     if (!r.checked) return
@@ -850,9 +918,21 @@ courtRadios.forEach((r) => {
     renderLightsModelOptions(nextCourt)
     loadCourt(nextCourt)
     loadLightsModel(lightsModelSelect?.value ?? 'none')
+
+    // extras зависят от типа корта (solo/duo)
     loadGoalsModel(nextCourt)
+    loadProtectorsModel(nextCourt)
   })
 })
+
+// extras toggles
+goalsCheckbox?.addEventListener('change', () => loadGoalsModel(currentCourtKey))
+accessoriesCheckbox?.addEventListener('change', () => loadInventarModel())
+protectorsCheckbox?.addEventListener('change', () => {
+  toggleProtectorsPanel()
+  loadProtectorsModel(currentCourtKey)
+})
+toggleProtectorsPanel()
 
 // -----------------------------
 // Modal
@@ -862,17 +942,6 @@ const closeModal = () => modal?.classList.remove('is-open')
 
 modalOpenBtn?.addEventListener('click', openModal)
 modalCloseBtns.forEach((btn) => btn.addEventListener('click', closeModal))
-goalsCheckbox?.addEventListener('change', () => {
-  loadGoalsModel(currentCourtKey)
-})
-inventoryCheckbox?.addEventListener('change', () => {
-  loadInventoryModel()
-})
-fitCameraToObject(courtRoot, 1.0)
-placeLightsOverCourt()
-placeGoalsOnCourt()
-placeGoalsOnCourt()
-placeInventoryOnCourt()
 
 modal?.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeModal()
@@ -944,6 +1013,9 @@ async function sendLead() {
       lightsColor: currentLightsColor,
       lightsColorName: currentLightsColorName,
 
+      protectorsColor: currentProtectorsColor,
+      protectorsColorName: currentProtectorsColorName,
+
       extras: getExtras()
     },
     screenshotDataUrl
@@ -998,8 +1070,12 @@ renderLightsModelOptions(currentCourtKey)
 
 loadCourt('base')
 loadLightsModel('none')
+
+// extras init based on checkboxes
 loadGoalsModel('base')
-loadInventoryModel()
+loadInventarModel()
+loadProtectorsModel('base')
+
 // -----------------------------
 // Render loop
 // -----------------------------
@@ -1008,7 +1084,9 @@ function tick() {
   if (mixerCourt) mixerCourt.update(dt)
   if (mixerLights) mixerLights.update(dt)
   if (mixerGoals) mixerGoals.update(dt)
-  if (mixerInventory) mixerInventory.update(dt)
+  if (mixerInventar) mixerInventar.update(dt)
+  if (mixerProtectors) mixerProtectors.update(dt)
+
   controls.update()
   renderer.render(scene, camera)
   requestAnimationFrame(tick)
