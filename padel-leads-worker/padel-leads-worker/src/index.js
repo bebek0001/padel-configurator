@@ -140,6 +140,15 @@ export default {
       payload?.config?.lightsColor
     );
 
+    const protectorsColorText = formatColor(payload?.config?.protectorsColorName, payload?.config?.protectorsColor);
+    const turfColorText = formatColor(payload?.config?.turfColorName, payload?.config?.turfColor);
+
+    const protectorsColorLine = payload?.config?.protectorsColor ? `🧩 Цвет протекторов: ${protectorsColorText}\n` : '';
+    const turfColorLine = payload?.config?.turfColor ? `🌿 Цвет покрытия: ${turfColorText}\n` : '';
+
+    const protectorsColorShortLine = payload?.config?.protectorsColor ? `🧩 Протекторы: ${protectorsColorText}\n` : '';
+    const turfColorShortLine = payload?.config?.turfColor ? `🌿 Покрытие: ${turfColorText}\n` : '';
+
     const fullMsg =
 `🟢 НОВАЯ ЗАЯВКА PADEL
 
@@ -151,7 +160,7 @@ export default {
 🌤 Свет сцены: ${safe(payload?.config?.sceneLighting?.label || payload?.config?.sceneLighting?.id)}
 🎨 Цвет конструкции: ${structureColorText}
 🚦 Цвет стоек освещения: ${lightsColorText}
-
+${protectorsColorLine}${turfColorLine}
 ➕ Опции:
 ${extras}
 
@@ -163,7 +172,7 @@ ${extras}
 `🟢 НОВАЯ ЗАЯВКА PADEL
 👤 ${safe(payload?.contact?.fullName)} | 📞 ${safe(payload?.contact?.phone)}
 🏟 ${safe(payload?.config?.court?.label || payload?.config?.court?.id)}
-🌐 ${safe(payload?.pageUrl)}`.slice(0, 900);
+${protectorsColorShortLine}${turfColorShortLine}🌐 ${safe(payload?.pageUrl)}`.slice(0, 900);
 
     const screenshotDataUrl = payload?.screenshotDataUrl;
     const parsed = parseDataUrl(screenshotDataUrl);
