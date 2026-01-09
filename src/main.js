@@ -222,6 +222,15 @@ const protectorsCheckbox = document.querySelector('input[name="extra_options"][v
 // panel colors for protectors
 const protectorsColorPanel = document.querySelector('#protectorsColorsPanel')
 
+// turf (покрытие)
+const PAINTABLE_TURF_MATERIAL_NAME = 'Carpet is blue'
+
+const turfCheckbox = document.querySelector('input[name="extra_options"][value="turf"]')
+const turfColorPanel = document.querySelector('#turfColorsPanel')
+
+let currentTurfColor = null
+let currentTurfColorName = null
+
 // UI steps
 document.querySelectorAll('.stepHead').forEach((head) => {
   head.addEventListener('click', () => {
@@ -607,6 +616,11 @@ async function loadCourt(key) {
       improveMaterials(courtRoot)
       world.add(courtRoot)
 
+      // ✅ если трава включена и цвет уже выбран — применим на новом корте
+if (turfCheckbox?.checked && currentTurfColor) {
+  paintTurf(currentTurfColor, currentTurfColorName)
+}
+
       mixerCourt = null
       if (gltf.animations && gltf.animations.length) {
         mixerCourt = new THREE.AnimationMixer(courtRoot)
@@ -789,6 +803,7 @@ async function loadProtectorsModel(courtKey) {
 
 function paintMaterialByName(root, materialName, hex) {
   if (!root) return false
+  const target = String(materialName || '').toLowerCase()
   let painted = false
 
   root.traverse((obj) => {
@@ -796,7 +811,10 @@ function paintMaterialByName(root, materialName, hex) {
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material]
     mats.forEach((m) => {
       if (!m || !m.color) return
-      if (m.name === materialName) {
+      const n = String(m.name || '').toLowerCase()
+
+      // ✅ совпадение exact ИЛИ с суффиксом .001/.002
+      if (n === target || n.startsWith(target + '.')) {
         m.color.set(hex)
         m.needsUpdate = true
         painted = true
@@ -825,6 +843,21 @@ function paintProtectors(hex, nameFromBtn = null) {
   currentProtectorsColorName = nameFromBtn || colorNameFromHex(normalized) || null
 
   paintMaterialByName(protectorsRoot, PAINTABLE_STRUCTURE_MATERIAL_NAME, currentProtectorsColor)
+}
+
+// ---- turf (покрытие) ----
+function paintTurf(hex, nameFromBtn = null) {
+  const normalized = normalizeHex(hex)
+  currentTurfColor = normalized || hex
+  currentTurfColorName = nameFromBtn || colorNameFromHex(normalized) || null
+
+  // красим материал покрытия на корте
+  paintMaterialByName(courtRoot, PAINTABLE_TURF_MATERIAL_NAME, currentTurfColor)
+}
+
+function toggleTurfPanel() {
+  if (!turfColorPanel) return
+  turfColorPanel.style.display = turfCheckbox?.checked ? 'block' : 'none'
 }
 
 // -----------------------------
@@ -911,6 +944,15 @@ function toggleProtectorsPanel() {
   protectorsColorPanel.style.display = protectorsCheckbox?.checked ? 'block' : 'none'
 }
 
+// turf colors buttons
+document.querySelectorAll('.turfColorBtn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const c = btn.getAttribute('data-tcolor')
+    const name = btn.textContent?.trim() || null
+    if (c) paintTurf(c, name)
+  })
+})
+
 courtRadios.forEach((r) => {
   r.addEventListener('change', () => {
     if (!r.checked) return
@@ -928,11 +970,21 @@ courtRadios.forEach((r) => {
 // extras toggles
 goalsCheckbox?.addEventListener('change', () => loadGoalsModel(currentCourtKey))
 accessoriesCheckbox?.addEventListener('change', () => loadInventarModel())
+
 protectorsCheckbox?.addEventListener('change', () => {
   toggleProtectorsPanel()
   loadProtectorsModel(currentCourtKey)
 })
+
+turfCheckbox?.addEventListener('change', () => {
+  toggleTurfPanel()
+  // Turf — это не отдельная модель, красим только если выбран цвет
+  if (!turfCheckbox.checked) return
+  if (currentTurfColor) paintTurf(currentTurfColor, currentTurfColorName)
+})
+
 toggleProtectorsPanel()
+toggleTurfPanel()
 
 // -----------------------------
 // Modal
@@ -1015,6 +1067,8 @@ async function sendLead() {
 
       protectorsColor: currentProtectorsColor,
       protectorsColorName: currentProtectorsColorName,
+      turfColor: currentTurfColor,
+      turfColorName: currentTurfColorName,
 
       extras: getExtras()
     },
