@@ -121,7 +121,11 @@ const GOALS_MODEL_CANDIDATES = {
   duo: [assetUrl('models/extras/vorota_duo.glb')],
   solo: [assetUrl('models/extras/vorota_solo.glb')]
 }
+const INVENTORY_Y_LIFT_DEFAULT = 0.0
 
+const INVENTORY_MODEL_CANDIDATES = [
+  assetUrl('models/extras/inventar.glb')
+]
 function getGoalsCandidates(courtKey) {
   return isSoloCourt(courtKey) ? GOALS_MODEL_CANDIDATES.solo : GOALS_MODEL_CANDIDATES.duo
 }
@@ -198,6 +202,7 @@ const phoneInput = document.querySelector('input[name="phone"]')
 
 const backToMainBtn = document.querySelector('#backToMain')
 const goalsCheckbox = document.querySelector('input[name="extra_options"][value="goals"]')
+const inventoryCheckbox = document.querySelector('input[name="extra_options"][value="accessories"]')
 
 // UI steps
 document.querySelectorAll('.stepHead').forEach((head) => {
@@ -267,6 +272,7 @@ scene.add(courtFocusTarget)
 let courtRoot = null
 let lightsRoot = null
 let goalsRoot = null
+let inventoryRoot = null
 let currentLightsKey = 'none'
 let currentCourtKey = 'base'
 
@@ -277,6 +283,7 @@ let currentLightsColorName = null
 let mixerCourt = null
 let mixerLights = null
 let mixerGoals = null
+let mixerInventory = null
 
 const originalMaterialColors = new Map()
 
@@ -348,6 +355,14 @@ function clearGoalsModel() {
   disposeRoot(goalsRoot)
   goalsRoot = null
   mixerGoals = null
+}
+function clearInventoryModel() {
+  if (!inventoryRoot) return
+  forgetMaterialColors(inventoryRoot)
+  world.remove(inventoryRoot)
+  disposeRoot(inventoryRoot)
+  inventoryRoot = null
+  mixerInventory = null
 }
 
 function improveMaterials(root) {
@@ -492,6 +507,22 @@ function placeGoalsOnCourt() {
   goalsRoot.position.y = GOALS_Y_LIFT_DEFAULT
 }
 
+function placeInventoryOnCourt() {
+  if (!courtRoot || !inventoryRoot) return
+
+  const courtBox = new THREE.Box3().setFromObject(courtRoot)
+  const courtCenter = courtBox.getCenter(new THREE.Vector3())
+
+  const invBox = new THREE.Box3().setFromObject(inventoryRoot)
+  const invCenter = invBox.getCenter(new THREE.Vector3())
+
+  const dx = courtCenter.x - invCenter.x
+  const dz = courtCenter.z - invCenter.z
+
+  inventoryRoot.position.x += dx
+  inventoryRoot.position.z += dz
+  inventoryRoot.position.y = INVENTORY_Y_LIFT_DEFAULT
+}
 function loadGLB(url) {
   return new Promise((resolve, reject) => {
     loader.load(url, resolve, undefined, reject)
@@ -657,6 +688,48 @@ async function loadGoalsModel(courtKey) {
   console.error(lastErr)
   setStatus('Ошибка: не удалось загрузить ворота. Проверь public/models/extras')
 }
+async function loadInventoryModel() {
+  // Инвентарь включается только по чекбоксу аксессуаров
+  if (!inventoryCheckbox?.checked) {
+    clearInventoryModel()
+    return
+  }
+
+  clearInventoryModel()
+
+  const candidates = INVENTORY_MODEL_CANDIDATES
+  if (!candidates || !candidates.length) {
+    setStatus('Нет путей для инвентаря')
+    return
+  }
+
+  setStatus('Загрузка инвентаря...')
+
+  let lastErr = null
+  for (const url of candidates) {
+    try {
+      const gltf = await loadGLB(url)
+      inventoryRoot = gltf.scene
+      improveMaterials(inventoryRoot)
+      world.add(inventoryRoot)
+
+      mixerInventory = null
+      if (gltf.animations && gltf.animations.length) {
+        mixerInventory = new THREE.AnimationMixer(inventoryRoot)
+        gltf.animations.forEach((clip) => mixerInventory.clipAction(clip).play())
+      }
+
+      placeInventoryOnCourt()
+      setStatus('Инвентарь загружен')
+      return
+    } catch (e) {
+      lastErr = e
+    }
+  }
+
+  console.error(lastErr)
+  setStatus('Ошибка: не удалось загрузить инвентарь. Проверь public/models/extras/inventar.glb')
+}
 
 function paintMaterialByName(root, materialName, hex) {
   if (!root) return false
@@ -792,9 +865,14 @@ modalCloseBtns.forEach((btn) => btn.addEventListener('click', closeModal))
 goalsCheckbox?.addEventListener('change', () => {
   loadGoalsModel(currentCourtKey)
 })
+inventoryCheckbox?.addEventListener('change', () => {
+  loadInventoryModel()
+})
 fitCameraToObject(courtRoot, 1.0)
 placeLightsOverCourt()
 placeGoalsOnCourt()
+placeGoalsOnCourt()
+placeInventoryOnCourt()
 
 modal?.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeModal()
@@ -921,6 +999,7 @@ renderLightsModelOptions(currentCourtKey)
 loadCourt('base')
 loadLightsModel('none')
 loadGoalsModel('base')
+loadInventoryModel()
 // -----------------------------
 // Render loop
 // -----------------------------
@@ -929,6 +1008,7 @@ function tick() {
   if (mixerCourt) mixerCourt.update(dt)
   if (mixerLights) mixerLights.update(dt)
   if (mixerGoals) mixerGoals.update(dt)
+  if (mixerInventory) mixerInventory.update(dt)
   controls.update()
   renderer.render(scene, camera)
   requestAnimationFrame(tick)
