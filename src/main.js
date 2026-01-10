@@ -236,16 +236,32 @@ document.querySelectorAll('.stepHead').forEach((head) => {
   head.addEventListener('click', () => {
     const step = head.closest('.step')
     if (!step) return
+
+    const willOpen = !step.classList.contains('is-open')
     step.classList.toggle('is-open')
+
+    // Фокусируемся только когда шаг ОТКРЫВАЮТ
+    if (!willOpen) return
+
+    const n = Number(step.getAttribute('data-step'))
+    if (n === 1) focusOnCourtWide()
+    if (n === 2) focusOnLights()
+    if (n === 3) focusOnCourtWide()
+    if (n === 4) focusOnCourtWide()
   })
 })
-
 function goToStep(stepNumber) {
   const target = document.querySelector(`.step[data-step="${stepNumber}"]`)
   if (!target) return
   document.querySelectorAll('.step').forEach((s) => s.classList.remove('is-open'))
   target.classList.add('is-open')
   target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // ✅ Фокус камеры при переходе по кнопке "Далее"
+  const n = Number(stepNumber)
+  if (n === 1) focusOnCourtWide()
+  if (n === 2) focusOnLights()
+  if (n === 3) focusOnCourtWide()
+  if (n === 4) focusOnCourtWide()
 }
 
 backToMainBtn?.addEventListener('click', () => {
@@ -282,6 +298,64 @@ const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 500)
 camera.position.set(6, 4, 10)
 
 const controls = new OrbitControls(camera, renderer.domElement)
+// -----------------------------
+// CAMERA FLY (smooth) + user-interaction guard
+// -----------------------------
+let camFlyRaf = null
+let camFlyLockUntil = 0
+
+// если пользователь начал крутить — не перебиваем перелётом
+let userInteracting = false
+controls.addEventListener('start', () => {
+  userInteracting = true
+  camFlyLockUntil = Date.now() + 700 // 0.7s после старта не трогаем камеру
+  if (camFlyRaf) cancelAnimationFrame(camFlyRaf)
+  camFlyRaf = null
+})
+controls.addEventListener('end', () => {
+  // даём немного времени после отпускания мыши
+  camFlyLockUntil = Date.now() + 500
+  userInteracting = false
+})
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
+
+function animateCameraTo({ pos, target, duration = 650 }) {
+  const now = Date.now()
+  if (now < camFlyLockUntil) return // не вмешиваемся если юзер крутит/только что крутил
+
+  if (!pos || !target) return
+
+  if (camFlyRaf) cancelAnimationFrame(camFlyRaf)
+  camFlyRaf = null
+
+  const startTime = performance.now()
+
+  const fromPos = camera.position.clone()
+  const fromTarget = controls.target.clone()
+
+  const toPos = pos.clone()
+  const toTarget = target.clone()
+
+  function tick(tNow) {
+    const t = Math.min(1, (tNow - startTime) / duration)
+    const k = easeInOutCubic(t)
+
+    camera.position.lerpVectors(fromPos, toPos, k)
+    controls.target.lerpVectors(fromTarget, toTarget, k)
+    controls.update()
+
+    if (t < 1) {
+      camFlyRaf = requestAnimationFrame(tick)
+    } else {
+      camFlyRaf = null
+    }
+  }
+
+  camFlyRaf = requestAnimationFrame(tick)
+}
 controls.enableDamping = true
 controls.dampingFactor = 0.06
 controls.target.set(0, 1.2, 0)
@@ -298,6 +372,74 @@ scene.add(courtFocusTarget)
 
 let courtRoot = null
 let lightsRoot = null
+// -----------------------------
+// CAMERA PRESETS (premium angles)
+// -----------------------------
+function getCourtCenterTarget() {
+  if (!courtRoot) return new THREE.Vector3(0, 1.2, 0)
+  const box = new THREE.Box3().setFromObject(courtRoot)
+  const c = box.getCenter(new THREE.Vector3())
+  c.y = Math.max(1.0, c.y) // чуть выше центра
+  return c
+}
+
+function focusOnCourtWide() {
+  const target = getCourtCenterTarget()
+  // красивый общий ракурс: диагональ + чуть сверху
+  const pos = target.clone().add(new THREE.Vector3(9.5, 6.0, 10.5))
+  animateCameraTo({ pos, target, duration: 750 })
+}
+
+function focusOnLights() {
+  const target = getCourtCenterTarget().add(new THREE.Vector3(0, 1.2, 0))
+  const pos = target.clone().add(new THREE.Vector3(20.5, 2.2, 15.8)) // выше
+  animateCameraTo({ pos, target, duration: 750 })
+}
+
+function focusOnTurf() {
+  // чтобы читалось покрытие: чуть сверху, но не строго сверху
+  const target = getCourtCenterTarget().add(new THREE.Vector3(0, 0.2, 0))
+  const pos = target.clone().add(new THREE.Vector3(7.5, 8.5, 7.5))
+  animateCameraTo({ pos, target, duration: 700 })
+}
+
+// Автофокус на конкретную модель (ворота/протекторы/инвентарь)
+// Берём бокс объекта, ставим камеру так, чтобы "влезало"
+function focusOnObject(root, offset = 1.25) {
+  if (!root) return
+  const box = new THREE.Box3().setFromObject(root)
+  const size = box.getSize(new THREE.Vector3())
+  const center = box.getCenter(new THREE.Vector3())
+
+  const maxSize = Math.max(size.x, size.y, size.z)
+  const fitHeightDistance = maxSize / (2 * Math.atan((Math.PI * camera.fov) / 360))
+  const fitWidthDistance = fitHeightDistance / camera.aspect
+  const distance = offset * Math.max(fitHeightDistance, fitWidthDistance)
+
+  const dir = new THREE.Vector3(1, 0.55, 1).normalize()
+  const pos = center.clone().add(dir.multiplyScalar(distance))
+
+  animateCameraTo({ pos, target: center, duration: 700 })
+}
+
+function focusOnProtectors() {
+  // если протекторы уже загружены — автофокус на них
+  if (protectorsRoot) {
+    focusOnObject(protectorsRoot, 1.35)
+  } else {
+    focusOnCourtWide()
+  }
+}
+
+function focusOnGoals() {
+  if (goalsRoot) focusOnObject(goalsRoot, 1.35)
+  else focusOnCourtWide()
+}
+
+function focusOnAccessories() {
+  if (inventarRoot) focusOnObject(inventarRoot, 1.35)
+  else focusOnCourtWide()
+}
 let goalsRoot = null
 let inventarRoot = null
 let protectorsRoot = null
@@ -936,6 +1078,7 @@ document.querySelectorAll('.protectorsColorBtn').forEach((btn) => {
     const c = btn.getAttribute('data-pcolor')
     const name = btn.textContent?.trim() || null
     if (c) paintProtectors(c, name)
+      focusOnProtectors()
   })
 })
 
@@ -968,19 +1111,38 @@ courtRadios.forEach((r) => {
 })
 
 // extras toggles
-goalsCheckbox?.addEventListener('change', () => loadGoalsModel(currentCourtKey))
-accessoriesCheckbox?.addEventListener('change', () => loadInventarModel())
+goalsCheckbox?.addEventListener('change', () => {
+  loadGoalsModel(currentCourtKey)
+  if (goalsCheckbox.checked) focusOnGoals()
+  else focusOnCourtWide()
+})
+
+accessoriesCheckbox?.addEventListener('change', () => {
+  loadInventarModel()
+  if (accessoriesCheckbox.checked) focusOnAccessories()
+  else focusOnCourtWide()
+})
 
 protectorsCheckbox?.addEventListener('change', () => {
   toggleProtectorsPanel()
   loadProtectorsModel(currentCourtKey)
+  focusOnProtectors()
+
+  if (protectorsCheckbox.checked) focusOnProtectors()
+  else focusOnCourtWide()
 })
 
 turfCheckbox?.addEventListener('change', () => {
   toggleTurfPanel()
-  // Turf — это не отдельная модель, красим только если выбран цвет
-  if (!turfCheckbox.checked) return
-  if (currentTurfColor) paintTurf(currentTurfColor, currentTurfColorName)
+
+  if (!turfCheckbox.checked) {
+    focusOnCourtWide()
+    return
+  }
+
+  focusOnTurf()
+  if (currentTurfColor) paintTurf (currentTurfColor, currentTurfColorName)
+    focusOnTurf()
 })
 
 toggleProtectorsPanel()
