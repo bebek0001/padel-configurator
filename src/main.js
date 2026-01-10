@@ -386,7 +386,7 @@ function getCourtCenterTarget() {
 function focusOnCourtWide() {
   const target = getCourtCenterTarget()
   // красивый общий ракурс: диагональ + чуть сверху
-  const pos = target.clone().add(new THREE.Vector3(9.5, 6.0, 20.5))
+  const pos = target.clone().add(new THREE.Vector3(9.5, 6.1, 20.5))
   animateCameraTo({ pos, target, duration: 750 })
 }
 /// Ракус на освещение
