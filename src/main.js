@@ -373,7 +373,7 @@ scene.add(courtFocusTarget)
 let courtRoot = null
 let lightsRoot = null
 // -----------------------------
-// CAMERA PRESETS (premium angles)
+// CAMERA PRESETS (premium angles) Освещение ракурсы
 // -----------------------------
 function getCourtCenterTarget() {
   if (!courtRoot) return new THREE.Vector3(0, 1.2, 0)
@@ -386,10 +386,10 @@ function getCourtCenterTarget() {
 function focusOnCourtWide() {
   const target = getCourtCenterTarget()
   // красивый общий ракурс: диагональ + чуть сверху
-  const pos = target.clone().add(new THREE.Vector3(9.5, 6.0, 10.5))
+  const pos = target.clone().add(new THREE.Vector3(9.5, 6.0, 20.5))
   animateCameraTo({ pos, target, duration: 750 })
 }
-
+/// Ракус на освещение
 function focusOnLights() {
   const target = getCourtCenterTarget().add(new THREE.Vector3(0, 1.2, 0))
   const pos = target.clone().add(new THREE.Vector3(20.5, 2.2, 15.8)) // выше
