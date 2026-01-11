@@ -38,7 +38,7 @@ const COURT_LABELS = {
   base: 'Классический корт',
   base_panoramic: 'Панорамный корт',
   ultra_panoramic: 'Ультра-панорамный корт',
-  single: 'Si — корт'
+  single: 'Single — корт'
 }
 
 const LIGHT_LABELS_DEFAULT = {
@@ -265,7 +265,7 @@ function goToStep(stepNumber) {
 }
 
 backToMainBtn?.addEventListener('click', () => {
-  goToStep(1)
+  window.history.back()
 })
 
 document.querySelectorAll('[data-next]').forEach((btn) => {
