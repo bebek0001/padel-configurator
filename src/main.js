@@ -38,7 +38,7 @@ const COURT_LABELS = {
   base: 'Классический корт',
   base_panoramic: 'Панорамный корт',
   ultra_panoramic: 'Ультра-панорамный корт',
-  single: 'Single — корт'
+  single: 'Si — корт'
 }
 
 const LIGHT_LABELS_DEFAULT = {

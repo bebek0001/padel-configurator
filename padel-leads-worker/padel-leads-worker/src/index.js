@@ -1,11 +1,17 @@
 const ALLOWED_ORIGINS = new Set([
   "https://nikolayvorob89-dot.github.io",
+  "https://padelborn.netlify.app",
 ]);
 
 function isAllowedOrigin(origin) {
   if (!origin) return false;
+
   if (origin.startsWith("http://localhost:")) return true;
   if (origin.startsWith("http://127.0.0.1:")) return true;
+
+  // ✅ Разрешаем Netlify (и deploy previews тоже)
+  if (origin.endsWith(".netlify.app")) return true;
+
   return ALLOWED_ORIGINS.has(origin);
 }
 
