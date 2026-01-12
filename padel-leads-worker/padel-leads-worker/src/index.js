@@ -1,6 +1,13 @@
 const ALLOWED_ORIGINS = new Set([
   "https://nikolayvorob89-dot.github.io",
   "https://padelborn.netlify.app",
+  "https://padelconfigurator.com",
+
+  "https://padelborn.space",
+  "https://www.padelborn.space",
+  // ✅ ДОБАВЬ ЭТО:
+  "http://padelborn.space",
+  "http://www.padelborn.space",
 ]);
 
 function isAllowedOrigin(origin) {
@@ -11,6 +18,12 @@ function isAllowedOrigin(origin) {
 
   // ✅ Разрешаем Netlify (и deploy previews тоже)
   if (origin.endsWith(".netlify.app")) return true;
+
+  // ✅ Разрешаем твой домен и по http, пока SSL не поднят
+  if (origin === "https://padelborn.space") return true;
+  if (origin === "https://www.padelborn.space") return true;
+  if (origin === "http://padelborn.space") return true;
+  if (origin === "http://www.padelborn.space") return true;
 
   return ALLOWED_ORIGINS.has(origin);
 }
@@ -100,14 +113,15 @@ async function tgSendPhoto(env, { bytes, mime, caption }) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin") || "";
 
     // preflight
     if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders(origin) });
-    }
+  if (!isAllowedOrigin(origin)) return new Response("Forbidden", { status: 403 });
+  return new Response(null, { status: 204, headers: corsHeaders(origin) });
+}
 
     // healthcheck
     if (url.pathname === "/api/lead" && request.method === "GET") {
