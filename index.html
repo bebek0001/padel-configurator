@@ -114,44 +114,88 @@
 
           <!-- STEP 3 -->
           <section class="step" data-step="3">
-            <button class="stepHead" type="button">
-              <span class="stepNum">3</span>
-              <span class="stepTitle">Цвет конструкции</span>
-            </button>
+  <button class="stepHead" type="button">
+    <span class="stepNum">3</span>
+    <span class="stepTitle">Цвет конструкции</span>
+  </button>
 
-            <div class="stepBody">
-              <div class="card">
-                <div class="cardTitle">Базовые цвета</div>
+  <div class="stepBody">
+    <div class="card">
+      <div class="cardTitle">Базовые цвета</div>
 
-                <div class="colorGrid">
-                  <button class="colorBtn" data-color="#1f6fff" type="button">Синий</button>
-                  <button class="colorBtn" data-color="#111111" type="button">Черный</button>
-                  <button class="colorBtn" data-color="#2dbb4f" type="button">Зеленый</button>
-                  <button class="colorBtn" data-color="#e83c3c" type="button">Красный</button>
-                  <button class="colorBtn" data-color="#ff4bb5" type="button">Розовый</button>
-                  <button class="colorBtn" data-color="#f5c400" type="button">Желтый</button>
-                  <button class="colorBtn" data-color="#ff7a00" type="button">Оранжевый</button>
-                  <button class="colorBtn" data-color="#8a4dff" type="button">Фиолетовый</button>
-                </div>
+      <div class="colorGrid">
+        <button class="colorBtn" data-color="#1f6fff" type="button">Синий</button>
+        <button class="colorBtn" data-color="#111111" type="button">Черный</button>
+        <button class="colorBtn" data-color="#2dbb4f" type="button">Зеленый</button>
+        <button class="colorBtn" data-color="#e83c3c" type="button">Красный</button>
+        <button class="colorBtn" data-color="#ff4bb5" type="button">Розовый</button>
+        <button class="colorBtn" data-color="#f5c400" type="button">Желтый</button>
+        <button class="colorBtn" data-color="#ff7a00" type="button">Оранжевый</button>
+        <button class="colorBtn" data-color="#8a4dff" type="button">Фиолетовый</button>
+      </div>
 
-                <div class="customRow">
-                  <div class="customLabel">Свой цвет</div>
-                  <input id="structureColor" type="color" value="#111111" />
-                  <button class="btn" id="applyStructureColor" type="button">Применить</button>
-                  <button class="btn ghost" id="resetStructureColors" type="button">Сбросить</button>
-                </div>
+      <div class="customRow">
+        <div class="customLabel">Свой цвет</div>
+        <input id="structureColor" type="color" value="#111111" />
+        <button class="btn" id="applyStructureColor" type="button">Применить</button>
+        <button class="btn ghost" id="resetStructureColors" type="button">Сбросить</button>
+      </div>
 
-                <button class="btn btnWide ghost" id="restoreAllColors" type="button">
-                  Вернуть исходные цвета
-                </button>
-              </div>
-            </div>
-          </section>
+      <button class="btn btnWide ghost" id="restoreAllColors" type="button">
+        Вернуть исходные цвета
+      </button>
+    </div>
+
+    <!-- ⬇⬇⬇ КНОПКА ТОЛЬКО ТУТ -->
+    <button class="next" type="button" data-next="4">
+      Далее <span class="chev">›</span>
+    </button>
+  </div>
+</section>
 
           <!-- STEP 4 -->
-          <section class="step" data-step="4">
+<section class="step" data-step="4">
+  <button class="stepHead" type="button">
+    <span class="stepNum">4</span>
+    <span class="stepTitle">Искусственная трава для корта</span>
+  </button>
+
+  <div class="stepBody">
+    <div class="card">
+      <div class="cardTitle">Искусственная трава для падел корта</div>
+
+      <label class="radioRow" style="margin-top: 10px;">
+        <input type="checkbox" id="turfEnabled" checked />
+        <span class="optionLabel">Добавить искусственную траву</span>
+      </label>
+
+      <div class="card" id="turfColorsPanelStep" style="margin-top: 14px;">
+        <div class="cardTitle">Цвет покрытия</div>
+
+        <div class="lightsColorBlock">
+          <button class="turfColorBtn" type="button" data-tcolor="#007f0e">Зеленый</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#0047ab">Синий</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#8b4513">Коричневый</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#808080">Серый</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#000000">Черный</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#e83c3c">Красный</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#ff7a00">Оранжевый</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#8a4dff">Фиолетовый</button>
+          <button class="turfColorBtn" type="button" data-tcolor="#ff4bb5">Розовый</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="next" type="button" data-next="5">
+      Далее <span class="chev">›</span>
+    </button>
+  </div>
+</section>
+
+          <!-- STEP 5 -->
+          <section class="step" data-step="5">
             <button class="stepHead" type="button">
-              <span class="stepNum">4</span>
+              <span class="stepNum">5</span>
               <span class="stepTitle">Дополнительные опции</span>
             </button>
 
@@ -194,10 +238,7 @@
                     </div>
                   </div>
 
-                  <label class="radioRow">
-  <input type="checkbox" name="extra_options" value="turf" />
-  <span class="optionLabel">Искусственная трава для падел корта</span>
-</label>
+                  
 
 <div class="card" id="turfColorsPanel" style="display:none; margin-top: 14px;">
   <div class="cardTitle">Цвет покрытия</div>
