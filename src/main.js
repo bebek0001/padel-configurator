@@ -141,6 +141,22 @@ const PROTECTORS_MODEL_CANDIDATES = {
     assetUrl('models/protector_solo.glb')
   ]
 }
+// --- MOBILE BASE (мобильные основания) ---
+// Ожидаемый файл: public/models/extras/port_duo.glb
+const MOBILE_BASE_MODEL_CANDIDATES = {
+  duo: [
+    assetUrl('models/extras/port_duo.glb'),
+    assetUrl('models/extras/Port_duo.glb'),
+    assetUrl('models/extras/port-duo.glb'),
+    assetUrl('models/port_duo.glb')
+  ],
+  solo: [
+    assetUrl('models/extras/port_solo.glb'),
+    assetUrl('models/extras/Port_solo.glb'),
+    assetUrl('models/extras/port-solo.glb'),
+    assetUrl('models/port_solo.glb')
+  ]
+}
 
 // Красим строго этот материал (как у базы корта)
 const PAINTABLE_STRUCTURE_MATERIAL_NAME = 'Black'
@@ -217,6 +233,7 @@ const backToMainBtn = document.querySelector('#backToMain')
 // extras checkboxes
 const goalsCheckbox = document.querySelector('input[name="extra_options"][value="goals"]')
 const accessoriesCheckbox = document.querySelector('input[name="extra_options"][value="accessories"]')
+const mobileBaseCheckbox = document.querySelector('input[name="extra_options"][value="mobile_base"]')
 const protectorsCheckbox = document.querySelector('input[name="extra_options"][value="protectors"]')
 
 // panel colors for protectors
@@ -443,6 +460,8 @@ function focusOnAccessories() {
 let goalsRoot = null
 let inventarRoot = null
 let protectorsRoot = null
+let mobileBaseRoot = null
+let mixerMobileBase = null
 
 let currentLightsKey = 'none'
 let currentCourtKey = 'base'
@@ -548,6 +567,14 @@ function clearProtectorsModel() {
   disposeRoot(protectorsRoot)
   protectorsRoot = null
   mixerProtectors = null
+}
+function clearMobileBaseModel() {
+  if (!mobileBaseRoot) return
+  forgetMaterialColors(mobileBaseRoot)
+  world.remove(mobileBaseRoot)
+  disposeRoot(mobileBaseRoot)
+  mobileBaseRoot = null
+  mixerMobileBase = null
 }
 
 function improveMaterials(root) {
@@ -774,6 +801,7 @@ if (turfCheckbox?.checked && currentTurfColor) {
       placeExtraOnCourt(goalsRoot)
       placeExtraOnCourt(inventarRoot)
       placeExtraOnCourt(protectorsRoot)
+      placeExtraOnCourt(mobileBaseRoot)
 
       const label = COURT_LABELS[key] ?? key
       setStatus(`Корт загружен: ${label}`)
@@ -911,6 +939,8 @@ async function loadProtectorsModel(courtKey) {
     return
   }
 
+
+
   clearProtectorsModel()
   const candidates = getProtectorsCandidates(courtKey)
 
@@ -941,6 +971,57 @@ async function loadProtectorsModel(courtKey) {
 
   console.error(lastErr)
   setStatus('Ошибка: не удалось загрузить протекторы. Проверь public/models/extras')
+}
+
+async function loadMobileBaseModel(courtKey) {
+  // если в верстке нет чекбокса — просто выходим (не ломаем)
+  if (!mobileBaseCheckbox) return
+
+  if (!mobileBaseCheckbox.checked) {
+    clearMobileBaseModel()
+    return
+  }
+
+  clearMobileBaseModel()
+  const candidates = getMobileBaseCandidates(courtKey)
+
+  if (!candidates.length) {
+    setStatus('Нет путей для мобильного основания')
+    return
+  }
+
+  setStatus('Загрузка мобильного основания...')
+  let lastErr = null
+
+  for (const url of candidates) {
+    try {
+      const gltf = await loadGLB(url)
+      mobileBaseRoot = gltf.scene
+      improveMaterials(mobileBaseRoot)
+      world.add(mobileBaseRoot)
+
+      mixerMobileBase = null
+      if (gltf.animations && gltf.animations.length) {
+        mixerMobileBase = new THREE.AnimationMixer(mobileBaseRoot)
+        gltf.animations.forEach((clip) => mixerMobileBase.clipAction(clip).play())
+      }
+
+      placeExtraOnCourt(mobileBaseRoot)
+      setStatus('Мобильное основание загружено')
+      return
+    } catch (e) {
+      lastErr = e
+    }
+  }
+
+  console.error(lastErr)
+  setStatus(`Ошибка: не удалось загрузить мобильное основание (проверь models/extras/port_duo.glb)`)
+}
+
+ function getMobileBaseCandidates(courtKey) {
+  return isSoloCourt(courtKey)
+    ? (MOBILE_BASE_MODEL_CANDIDATES.solo || [])
+    : (MOBILE_BASE_MODEL_CANDIDATES.duo || [])
 }
 
 function paintMaterialByName(root, materialName, hex) {
@@ -1107,6 +1188,7 @@ courtRadios.forEach((r) => {
     // extras зависят от типа корта (solo/duo)
     loadGoalsModel(nextCourt)
     loadProtectorsModel(nextCourt)
+    loadMobileBaseModel(nextCourt)
   })
 })
 
@@ -1115,6 +1197,10 @@ goalsCheckbox?.addEventListener('change', () => {
   loadGoalsModel(currentCourtKey)
   if (goalsCheckbox.checked) focusOnGoals()
   else focusOnCourtWide()
+})
+
+mobileBaseCheckbox?.addEventListener('change', () => {
+  loadMobileBaseModel(currentCourtKey)
 })
 
 accessoriesCheckbox?.addEventListener('change', () => {
@@ -1291,7 +1377,7 @@ loadLightsModel('none')
 loadGoalsModel('base')
 loadInventarModel()
 loadProtectorsModel('base')
-
+loadMobileBaseModel('base')
 // -----------------------------
 // Render loop
 // -----------------------------
